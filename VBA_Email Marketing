@@ -1,0 +1,260 @@
+Option Explicit
+
+Sub SendEmail(strTo As String, strSubject As String, strBody As String, Optional strAttach1 As String, Optional strAttach2 As String, Optional strImage1 As String, Optional strImage2 As String)
+
+Application.ScreenUpdating = False
+
+Dim olApp As Object
+Dim olMail As Object
+
+Set olApp = CreateObject("Outlook.Application")
+Set olMail = olApp.CreateItem(olMailItem)
+
+With olMail
+    .To = strTo
+    .Subject = strSubject
+    .HTMLBody = strBody
+    
+    If strAttach1 <> "" Then
+        .attachments.Add (strAttach1)
+    End If
+    
+    If strAttach2 <> "" Then
+        .attachments.Add (strAttach2)
+    End If
+    
+    If strImage1 <> "" Then
+        Dim attachment1 As Object
+        Set attachment1 = .attachments.Add(strImage1)
+        
+        attachment1.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage1"
+    End If
+    
+    If strImage2 <> "" Then
+        Dim attachment2 As Object
+        Set attachment2 = .attachments.Add(strImage2)
+        
+        attachment2.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage2"
+    End If
+    
+    .display
+    .Send
+    
+End With
+
+
+End Sub
+
+
+Sub DisplayEmail(strTo As String, strSubject As String, strBody As String, Optional strAttach1 As String, Optional strAttach2 As String, Optional strImage1 As String, Optional strImage2 As String)
+
+Dim olApp As Object
+Dim olMail As Object
+
+Set olApp = CreateObject("Outlook.Application")
+Set olMail = olApp.CreateItem(olMailItem)
+
+With olMail
+    .To = strTo
+    .Subject = strSubject
+    .HTMLBody = strBody
+    
+    If strAttach1 <> "" Then
+        .attachments.Add (strAttach1)
+    End If
+    
+    If strAttach2 <> "" Then
+        .attachments.Add (strAttach2)
+    End If
+    
+    If strImage1 <> "" Then
+        Dim attachment1 As Object
+        Set attachment1 = .attachments.Add(strImage1)
+        
+        attachment1.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage1"
+    End If
+    
+    If strImage2 <> "" Then
+        Dim attachment2 As Object
+        Set attachment2 = .attachments.Add(strImage2)
+        
+        attachment2.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage2"
+    End If
+    
+    .display
+    
+End With
+
+
+End Sub
+
+Sub Generate_Email()
+
+Application.ScreenUpdating = False
+
+Dim dataSheet As Worksheet
+Dim emailSheet As Worksheet
+Dim row_num As Long
+Dim response As VbMsgBoxResult
+Dim fontStyle As String
+Dim strTo As String, strSubject As String, strBody As String, strAttach1 As String, strAttach2 As String, strImage1 As String, strImage2 As String
+Dim strBody1 As String, strBody2 As String, strBodyImage1 As String, strBodyImage2 As String
+
+Set dataSheet = ThisWorkbook.Sheets("Data")
+Set emailSheet = ThisWorkbook.Sheets("Email")
+
+row_num = 2
+
+'Msgbox to confirm transfer
+response = MsgBox("Proceed?", vbQuestion + vbYesNo, "Transfer Function")
+
+If response = vbYes Then
+
+    Do While dataSheet.Cells(row_num, 2).Value <> ""
+        
+        strTo = dataSheet.Cells(row_num, 2).Value
+        strSubject = emailSheet.Cells(2, 3).Value
+        
+        fontStyle = emailSheet.Cells(10, 2).Value
+        
+        strAttach1 = emailSheet.Cells(4, 3).Value
+        
+        strAttach2 = emailSheet.Cells(5, 3).Value
+        
+        strImage1 = emailSheet.Cells(6, 3).Value
+        
+        strImage2 = emailSheet.Cells(7, 3).Value
+        
+        strBody1 = "<!DOCTYPE html>" & _
+                  "<html>" & _
+                  "<head>" & _
+                      "<title> </title>" & _
+                      "<style>" & _
+                      "body {" & _
+                            "font-family: " & fontStyle & ", sans-serif;" & _
+                            "background-color: " & backgroundColor & ";" & _
+                            "margin: 0;" & _
+                            "padding: 0;" & _
+                            "text-align: " & textAlign & ";" & _
+                            "font-size: " & fontSize & "px;" & _
+                        "}" & _
+                        "</style>" & _
+                    "</head>" & _
+                    "<body>" & _
+                    "<p>" & emailSheet.Cells(3, 3).Value & " "
+                    
+        strBodyImage1 = "<p> <img src='cid:myImage1'>"
+        
+        strBodyImage2 = "<p> <img src='cid:myImage2'>"
+
+        strBody2 = "</body>" & _
+                    "</html>"
+                                
+        If strImage1 <> "" And strImage2 <> "" Then
+            strBody = strBody1 & strBodyImage1 & strBodyImage2 & strBody2
+            
+        ElseIf strImage1 <> "" Then
+            strBody = strBody1 & strBodyImage1 & strBody2
+            
+        Else
+            strBody = strBody1 & strBody2
+        
+        End If
+        
+        Call SendEmail(strTo, strSubject, strBody, strAttach1, strAttach2, strImage1, strImage2)
+        
+        row_num = row_num + 1
+    Loop
+
+Else
+    Exit Sub
+
+End If
+
+End Sub
+
+Sub Generate_Display_Email()
+
+Application.ScreenUpdating = False
+
+Dim dataSheet As Worksheet
+Dim emailSheet As Worksheet
+Dim row_num As Long
+Dim response As VbMsgBoxResult
+Dim fontStyle As String
+Dim fontSize As String
+Dim backgroundColor As String
+Dim textAlign As String
+Dim strTo As String, strSubject As String, strBody As String, strAttach1 As String, strAttach2 As String, strImage1 As String, strImage2 As String
+Dim strBody1 As String, strBody2 As String, strBodyImage1 As String, strBodyImage2 As String
+
+Set dataSheet = ThisWorkbook.Sheets("Data")
+Set emailSheet = ThisWorkbook.Sheets("Email")
+
+row_num = 2
+
+'Msgbox to confirm transfer
+response = MsgBox("Proceed?", vbQuestion + vbYesNo, "Transfer Function")
+
+If response = vbYes Then
+
+        strTo = dataSheet.Cells(row_num, 2).Value
+        strSubject = emailSheet.Cells(2, 3).Value
+        
+        fontStyle = emailSheet.Cells(4, 8).Value
+        fontSize = emailSheet.Cells(5, 8).Value
+        backgroundColor = emailSheet.Cells(6, 8).Value
+        textAlign = emailSheet.Cells(7, 8).Value
+        
+        strAttach1 = emailSheet.Cells(4, 3).Value
+        
+        strAttach2 = emailSheet.Cells(5, 3).Value
+        
+        strImage1 = emailSheet.Cells(6, 3).Value
+        
+        strImage2 = emailSheet.Cells(7, 3).Value
+        
+        strBody1 = "<!DOCTYPE html>" & _
+                  "<html>" & _
+                  "<head>" & _
+                      "<title> </title>" & _
+                      "<style>" & _
+                      "body {" & _
+                            "font-family: " & fontStyle & ", sans-serif;" & _
+                            "background-color: " & backgroundColor & ";" & _
+                            "margin: 0;" & _
+                            "padding: 0;" & _
+                            "text-align: " & textAlign & ";" & _
+                            "font-size: " & fontSize & "px;" & _
+                        "}" & _
+                        "</style>" & _
+                    "</head>" & _
+                    "<body>" & _
+                    "<p>" & emailSheet.Cells(3, 3).Value & " "
+                    
+        strBodyImage1 = "<p> <img src='cid:myImage1'>"
+        
+        strBodyImage2 = "<p> <img src='cid:myImage2'>"
+
+        strBody2 = "</body>" & _
+                    "</html>"
+                                
+        If strImage1 <> "" And strImage2 <> "" Then
+            strBody = strBody1 & strBodyImage1 & strBodyImage2 & strBody2
+            
+        ElseIf strImage1 <> "" Then
+            strBody = strBody1 & strBodyImage1 & strBody2
+            
+        Else
+            strBody = strBody1 & strBody2
+        
+        End If
+        
+        Call DisplayEmail(strTo, strSubject, strBody, strAttach1, strAttach2, strImage1, strImage2)
+        
+Else
+    Exit Sub
+
+End If
+
+End Sub
