@@ -1,0 +1,499 @@
+##########################################
+#
+#   module 1
+#
+##########################################
+
+Option Explicit
+
+Sub SendEmail(strTo As String, strSubject As String, strBody As String, Optional strAttach1 As String, Optional strAttach2 As String, Optional strImage1 As String, Optional strImage2 As String)
+
+Application.ScreenUpdating = False
+
+Dim olApp As Object
+Dim olMail As Object
+Dim olNamespace As Object
+Dim olAccount As Object
+
+Set olApp = CreateObject("Outlook.Application")
+Set olNamespace = olApp.GetNamespace("MAPI")
+Set olAccount = olNamespace.Accounts.Item("Bark <services.bark@gmail.com>")
+
+Set olMail = olApp.CreateItem(olMailItem)
+
+With olMail
+    .SendUsingAccount = olAccount
+    .To = strTo
+    .Subject = strSubject
+    .HTMLBody = strBody
+    
+    If strAttach1 <> "" Then
+        .Attachments.Add (strAttach1)
+    End If
+    
+    If strAttach2 <> "" Then
+        .Attachments.Add (strAttach2)
+    End If
+    
+    If strImage1 <> "" Then
+        Dim attachment1 As Object
+        Set attachment1 = .Attachments.Add(strImage1)
+        
+        attachment1.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage1"
+    End If
+    
+    If strImage2 <> "" Then
+        Dim attachment2 As Object
+        Set attachment2 = .Attachments.Add(strImage2)
+        
+        attachment2.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage2"
+    End If
+    
+    .Display
+    .Send
+    
+End With
+
+
+End Sub
+
+
+Sub DisplayEmail(strTo As String, strSubject As String, strBody As String, Optional strAttach1 As String, Optional strAttach2 As String, Optional strImage1 As String, Optional strImage2 As String)
+
+Dim olApp As Object
+Dim olMail As Object
+Dim olNamespace As Object
+Dim olAccount As Object
+
+Set olApp = CreateObject("Outlook.Application")
+Set olNamespace = olApp.GetNamespace("MAPI")
+Set olAccount = olNamespace.Accounts.Item("Bark <services.bark@gmail.com>")
+
+Set olMail = olApp.CreateItem(olMailItem)
+
+With olMail
+    .SendUsingAccount = olAccount
+    .To = strTo
+    .Subject = strSubject
+    .HTMLBody = strBody
+    
+    If strAttach1 <> "" Then
+        .Attachments.Add (strAttach1)
+    End If
+    
+    If strAttach2 <> "" Then
+        .Attachments.Add (strAttach2)
+    End If
+    
+    If strImage1 <> "" Then
+        Dim attachment1 As Object
+        Set attachment1 = .Attachments.Add(strImage1)
+        
+        attachment1.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage1"
+    End If
+    
+    If strImage2 <> "" Then
+        Dim attachment2 As Object
+        Set attachment2 = .Attachments.Add(strImage2)
+        
+        attachment2.PropertyAccessor.SetProperty "http://schemas.microsoft.com/mapi/proptag/0x3712001E", "myImage2"
+    End If
+    
+    .Display
+    
+End With
+
+
+End Sub
+
+Sub Generate_Email()
+
+Application.ScreenUpdating = False
+
+Dim dataSheet As Worksheet
+Dim emailSheet As Worksheet
+Dim row_num As Long
+Dim response As VbMsgBoxResult
+Dim fontStyle As String
+Dim fontSize As String
+Dim backgroundColor As String
+Dim textAlign As String
+Dim logoPath As String
+Dim strTo As String, strSubject As String, strBody As String, strAttach1 As String, strAttach2 As String, strImage1 As String, strImage2 As String
+Dim strBody1 As String, strBody2 As String, strBody3 As String, strBody4 As String, strBody5 As String, strBodyImage1 As String, strBodyImage2 As String
+Dim custName As String
+Dim refNumber As Long
+Dim receiptDate As Date
+Dim payment As Currency
+
+Set dataSheet = ThisWorkbook.Sheets("Data")
+Set emailSheet = ThisWorkbook.Sheets("Email")
+
+row_num = dataSheet.Cells(Rows.Count, 6).End(xlUp).Row
+        
+strTo = dataSheet.Cells(row_num, 2).Value
+strSubject = emailSheet.Cells(2, 3).Value
+
+fontStyle = emailSheet.Cells(4, 8).Value
+fontSize = emailSheet.Cells(5, 8).Value
+backgroundColor = emailSheet.Cells(6, 8).Value
+textAlign = emailSheet.Cells(7, 8).Value
+
+custName = dataSheet.Cells(row_num, 1).Value
+refNumber = dataSheet.Cells(row_num, 3).Value
+receiptDate = dataSheet.Cells(row_num, 4).Value
+payment = dataSheet.Cells(row_num, 6).Value
+
+logoPath = emailSheet.Cells(8, 3).Value
+
+strAttach1 = emailSheet.Cells(4, 3).Value
+        
+strAttach2 = emailSheet.Cells(5, 3).Value
+        
+strImage1 = emailSheet.Cells(6, 3).Value
+        
+strImage2 = emailSheet.Cells(7, 3).Value
+
+strBody1 = "<!DOCTYPE html>" & _
+          "<html>" & _
+          "<head>" & _
+              "<title>Email Receipt</title>" & _
+              "<style>" & _
+              "body {" & _
+                    "font-family: " & fontStyle & ", sans-serif;" & _
+                    "background-color: " & backgroundColor & ";" & _
+                    "margin: 0;" & _
+                    "padding: 0;" & _
+                    "text-align: " & textAlign & ";" & _
+                    "font-size: " & fontSize & "px;" & _
+                "}" & _
+                "header {" & _
+                    "background-color: #0073e6;" & _
+                    "color: white;" & _
+                    "padding: 20px;" & _
+                    "text-align: center;" & _
+                "}"
+                    
+strBody2 = "table {" & _
+                  "border-collapse: collapse;" & _
+                  "width: 80%;" & _
+                  "margin: 0 auto;" & _
+                  "background-color: white;" & _
+                  "box-shadow: 0 4px 8px  rgba(0, 0, 0, 0.2);" & _
+                "}" & _
+            ".logo {" & _
+                "margin-bottom: 0;" & _
+                "}" & _
+                "th, td {" & _
+                  "border: none;" & _
+                  "padding: 10px;" & _
+                  "text-align: left;" & _
+                "}" & _
+                "th {" & _
+                    "background-color: #03468a;" & _
+                    "color: white;" & _
+                "}" & _
+                "tbody tr:nth-child(even) {" & _
+                    "background-color: #f2f2f2;" & _
+                "}"
+                    
+strBody3 = "footer { " & _
+                    "background-color: #0073e6;" & _
+                    "color: white;" & _
+                    "padding: 10px;" & _
+                    "text-align: center;" & _
+                "}" & _
+              "</style>" & _
+            "</head>" & _
+            "<body>" & _
+              "<header>" & _
+              "<div class='logo'>" & _
+                "<img src=" & "'" & logoPath & "'" & " alt='Company Logo' width='150'>" & _
+              "</div>" & _
+                "<h1>Bark Digital Marketing</h1>" & _
+                "<p>This is an email receipt for your recent purchase.</p>" & _
+              "</header>" & _
+              "<table>" & _
+                "<thead>"
+
+strBody4 = "<tr>" & _
+                    "<th>Reference Number</th>" & _
+                    "<th>Date</th>" & _
+                "<th>Name</th>" & _
+                    "<th>Total Payment</th>" & _
+                  "</tr>" & _
+                "</thead>" & _
+                "<tbody>" & _
+                  "<tr>" & _
+                    "<td>" & refNumber & "</td>" & _
+                    "<td>" & receiptDate & "</td>" & _
+                    "<td>" & custName & "</td>" & _
+                    "<td>" & payment & "</td>" & _
+                  "</tr>" & _
+                "</tbody>" & _
+              "</table>" & _
+              "<footer>" & _
+                "<p>If you have any questions or concerns, please contact us at:</p>" & _
+                "<p>Email: services.bark@gmail.com</p>" & _
+                "<p>Phone: 0927 199 5034</p>" & _
+              "</footer>"
+              
+strBodyImage1 = "<p> <img src='cid:myImage1'>"
+
+strBodyImage2 = "<p> <img src='cid:myImage2'>"
+            
+strBody5 = "</body>" & _
+            "</html>"
+
+If strImage1 <> "" And strImage2 <> "" Then
+    strBody = strBody1 & strBody2 & strBody3 & strBody4 & strBodyImage1 & strBodyImage2 & strBody5
+            
+ElseIf strImage1 <> "" Then
+    strBody = strBody1 & strBody2 & strBody3 & strBody4 & strBodyImage1 & strBody5
+    
+Else
+    strBody = strBody1 & strBody2 & strBody3 & strBody4 & strBody5
+
+End If
+
+Call SendEmail(strTo, strSubject, strBody, strAttach1, strAttach2, strImage1, strImage2)
+
+dataSheet.Cells(row_num, 7).Value = "Yes"
+
+End Sub
+
+Sub Generate_Display_Email()
+
+Application.ScreenUpdating = False
+
+Dim dataSheet As Worksheet
+Dim emailSheet As Worksheet
+Dim row_num As Long
+Dim response As VbMsgBoxResult
+Dim fontStyle As String
+Dim fontSize As String
+Dim backgroundColor As String
+Dim textAlign As String
+Dim logoPath As String
+Dim strTo As String, strSubject As String, strBody As String, strAttach1 As String, strAttach2 As String, strImage1 As String, strImage2 As String
+Dim strBody1 As String, strBody2 As String, strBody3 As String, strBody4 As String, strBody5 As String, strBodyImage1 As String, strBodyImage2 As String
+Dim custName As String
+Dim refNumber As Long
+Dim receiptDate As Date
+Dim payment As Currency
+
+Set dataSheet = ThisWorkbook.Sheets("Data")
+Set emailSheet = ThisWorkbook.Sheets("Email")
+
+row_num = 2
+
+'Msgbox to confirm transfer
+response = MsgBox("Proceed?", vbQuestion + vbYesNo, "Display Email Function")
+
+If response = vbYes Then
+
+        strTo = dataSheet.Cells(row_num, 2).Value
+        strSubject = emailSheet.Cells(2, 3).Value
+        
+        fontStyle = emailSheet.Cells(4, 8).Value
+        fontSize = emailSheet.Cells(5, 8).Value
+        backgroundColor = emailSheet.Cells(6, 8).Value
+        textAlign = emailSheet.Cells(7, 8).Value
+        
+        custName = dataSheet.Cells(row_num, 1).Value
+        refNumber = dataSheet.Cells(row_num, 3).Value
+        receiptDate = dataSheet.Cells(row_num, 4).Value
+        payment = dataSheet.Cells(row_num, 6).Value
+        
+        logoPath = emailSheet.Cells(8, 3).Value
+        
+        strAttach1 = emailSheet.Cells(4, 3).Value
+        
+        strAttach2 = emailSheet.Cells(5, 3).Value
+        
+        strImage1 = emailSheet.Cells(6, 3).Value
+        
+        strImage2 = emailSheet.Cells(7, 3).Value
+        
+        strBody1 = "<!DOCTYPE html>" & _
+          "<html>" & _
+          "<head>" & _
+              "<title>Email Receipt</title>" & _
+              "<style>" & _
+              "body {" & _
+                    "font-family: " & fontStyle & ", sans-serif;" & _
+                    "background-color: " & backgroundColor & ";" & _
+                    "margin: 0;" & _
+                    "padding: 0;" & _
+                    "text-align: " & textAlign & ";" & _
+                    "font-size: " & fontSize & "px;" & _
+                "}" & _
+                "header {" & _
+                    "background-color: #0073e6;" & _
+                    "color: white;" & _
+                    "padding: 20px;" & _
+                    "text-align: center;" & _
+                "}"
+                    
+        strBody2 = "table {" & _
+                          "border-collapse: collapse;" & _
+                          "width: 80%;" & _
+                          "margin: 0 auto;" & _
+                          "background-color: white;" & _
+                          "box-shadow: 0 4px 8px  rgba(0, 0, 0, 0.2);" & _
+                        "}" & _
+                    ".logo {" & _
+                        "margin-bottom: 0;" & _
+                        "}" & _
+                        "th, td {" & _
+                          "border: none;" & _
+                          "padding: 10px;" & _
+                          "text-align: left;" & _
+                        "}" & _
+                        "th {" & _
+                            "background-color: #03468a;" & _
+                            "color: white;" & _
+                        "}" & _
+                        "tbody tr:nth-child(even) {" & _
+                            "background-color: #f2f2f2;" & _
+                        "}"
+                            
+        strBody3 = "footer { " & _
+                            "background-color: #0073e6;" & _
+                            "color: white;" & _
+                            "padding: 10px;" & _
+                            "text-align: center;" & _
+                        "}" & _
+                      "</style>" & _
+                    "</head>" & _
+                    "<body>" & _
+                      "<header>" & _
+                      "<div class='logo'>" & _
+                        "<img src=" & "'" & logoPath & "'" & " alt='Company Logo' width='150'>" & _
+                      "</div>" & _
+                        "<h1>Bark Digital Marketing</h1>" & _
+                        "<p>This is an email receipt for your recent purchase.</p>" & _
+                      "</header>" & _
+                      "<table>" & _
+                        "<thead>"
+        
+        strBody4 = "<tr>" & _
+                            "<th>Reference Number</th>" & _
+                            "<th>Date</th>" & _
+                        "<th>Name</th>" & _
+                            "<th>Total Payment</th>" & _
+                          "</tr>" & _
+                        "</thead>" & _
+                        "<tbody>" & _
+                          "<tr>" & _
+                            "<td>" & refNumber & "</td>" & _
+                            "<td>" & receiptDate & "</td>" & _
+                            "<td>" & custName & "</td>" & _
+                            "<td>" & payment & "</td>" & _
+                          "</tr>" & _
+                        "</tbody>" & _
+                      "</table>" & _
+                      "<footer>" & _
+                        "<p>If you have any questions or concerns, please contact us at:</p>" & _
+                        "<p>Email: services.bark@gmail.com</p>" & _
+                        "<p>Phone: 0927 199 5034</p>" & _
+                      "</footer>"
+                      
+        strBodyImage1 = "<p> <img src='cid:myImage1'>"
+
+        strBodyImage2 = "<p> <img src='cid:myImage2'>"
+                    
+        strBody5 = "</body>" & _
+                    "</html>"
+                    
+        If strImage1 <> "" And strImage2 <> "" Then
+            strBody = strBody1 & strBody2 & strBody3 & strBody4 & strBodyImage1 & strBodyImage2 & strBody5
+            
+        ElseIf strImage1 <> "" Then
+            strBody = strBody1 & strBody2 & strBody3 & strBody4 & strBodyImage1 & strBody5
+            
+        Else
+            strBody = strBody1 & strBody2 & strBody3 & strBody4 & strBody5
+        
+        End If
+        
+        Call DisplayEmail(strTo, strSubject, strBody, strAttach1, strAttach2, strImage1, strImage2)
+        
+Else
+    Exit Sub
+
+End If
+
+End Sub
+
+Sub new_transaction()
+
+    frmTransactions.Show
+    
+End Sub
+
+############################################################################
+#
+#   user form
+#
+############################################################################
+Option Explicit
+
+Private Sub cmdEnter_Click()
+
+    Dim dataSheet As Worksheet
+    Dim wb As Workbook
+    Dim lastRow As Long
+    
+    Set wb = ThisWorkbook
+    Set dataSheet = wb.Sheets("Data")
+    
+    'Get last row and add 1 to adjust to the next blank cell
+    lastRow = dataSheet.Cells(Rows.Count, 1).End(xlUp).Row + 1
+    
+    'Format date delivered
+    Dim dateString As String
+    Dim formattedDate As Date
+    
+    dateString = tbxDate.Value
+    
+    On Error GoTo ErrorHandler
+    formattedDate = CDate(dateString)
+    On Error GoTo 0
+    
+    'Get Quantity from tbxQuantityDelivered
+    Dim paymentString As String
+    Dim payment As Double
+    
+    paymentString = tbxPayment.Value
+    
+    On Error GoTo ErrorHandler
+    payment = CDbl(paymentString)
+    On Error GoTo 0
+    
+    'Assign values collected to lastRow
+    With dataSheet
+    
+        .Cells(lastRow, 1).Value = tbxCustomerName.Value
+        .Cells(lastRow, 2).Value = tbxEmail.Value
+        .Cells(lastRow, 3).Value = tbxRefNum.Value
+        .Cells(lastRow, 4).Value = formattedDate
+        .Cells(lastRow, 5).Value = tbxItems.Value
+        .Cells(lastRow, 6).Value = tbxPayment.Value
+        .Cells(lastRow, 7).Value = "No"
+    
+    End With
+    
+    Call Module1.Generate_Email
+
+Exit Sub
+
+ErrorHandler:
+MsgBox "Please enter valid format."
+End Sub
+
+Private Sub cmdExit_Click()
+
+    Unload Me
+    
+End Sub
