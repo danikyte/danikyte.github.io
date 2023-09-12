@@ -1,0 +1,224 @@
+###################################################################################
+#
+#   api key and url are removed in this code for general repurpose applications
+#
+###################################################################################
+
+Option Explicit
+
+Public Sub Send_SMS()
+
+'workbook, worksheet SMS & Data
+Dim wb As Workbook
+Dim wsSMS As Worksheet
+Dim wsData As Worksheet
+
+'API Key and Sendername
+Dim API_KEY As String
+Dim SENDER_NAME As String
+
+'Last and start rows for receiver, status
+Dim LastRow_Receiver As Long
+Dim StartRow_Receiver As Long
+Dim StartRow_Status As Long
+Dim LastRow_Status As Long
+
+'Receiver number and text message
+Dim ReceiverNumber As String
+Dim TextMessage As String
+
+Dim Request As Object
+Dim response As Object
+Dim URL As String
+Dim postData As String
+Dim StatusResponse As String
+Dim i As Long
+Dim messageBox As VbMsgBoxResult
+
+Set wb = ThisWorkbook
+Set wsSMS = wb.Sheets("SMS")
+Set wsData = wb.Sheets("Data")
+
+'Msgbox to confirm transfer
+messageBox = MsgBox("Proceed?", vbQuestion + vbYesNo, "Send SMS?")
+
+If messageBox = vbYes Then
+
+    ' Authentication & Target Device ID
+    API_KEY = "[insert_your_api_here]"
+    SENDER_NAME = wsSMS.Range("B2").Value
+    
+    ' Get last row number and set startrow
+    StartRow_Receiver = 2
+    LastRow_Receiver = wsData.Cells(Rows.Count, 2).End(xlUp).Row
+    
+    LastRow_Status = wsSMS.Cells(Rows.Count, 2).End(xlUp).Row
+    
+    ' Clear Status
+    If LastRow_Status > 4 Then
+        wsSMS.Unprotect "[insert_your_password_here]"
+        wsSMS.Range("A5:B" & LastRow_Status).ClearContents
+        wsSMS.Protect "[insert_your_password_here]"
+    End If
+    
+    ' Get text message
+    TextMessage = wsSMS.Cells(3, 2).Value
+    
+    ' Remove line breaks (as this will lead to JSON error)
+    TextMessage = Replace(TextMessage, vbCrLf, vbLf)
+    TextMessage = Replace(TextMessage, vbLf, vbCrLf)
+    
+    
+    'Do batch sizing
+    
+    Dim batchSize As Long
+    Dim totalNumbers As Long
+    Dim batchCount As Long
+    Dim currentRow As Long
+    Dim batchIndex As Long
+    
+    batchSize = 1000 ' Maximum number of phone numbers per batch/API call allowed by Semaphore
+    totalNumbers = LastRow_Receiver - StartRow_Receiver + 1
+    
+    ' Calculate the number of batches needed
+    batchCount = WorksheetFunction.Ceiling(totalNumbers / batchSize, 1)
+    
+    currentRow = StartRow_Receiver
+    
+    
+    For batchIndex = 1 To batchCount
+        Dim batchNumbers As String
+        Dim batchMessages As String
+        
+        ' Determine how many numbers will be in this batch
+        Dim numbersInBatch As Long
+        numbersInBatch = IIf(totalNumbers >= batchSize, batchSize, totalNumbers)
+        
+        
+        For i = 1 To numbersInBatch
+        
+            'Get receiver number
+            ReceiverNumber = wsData.Cells(currentRow, 2).Value
+            
+            'Concatenate numbers
+            batchNumbers = batchNumbers & ReceiverNumber & ", "
+            
+            currentRow = currentRow + 1
+            totalNumbers = totalNumbers - 1
+        
+        Next i
+        
+        ' Remove trailing comma from batchNumbers
+        batchNumbers = Left(batchNumbers, Len(batchNumbers) - 2)
+        
+        'Use XML HTTP
+        Set Request = CreateObject("Microsoft.XMLHTTP")
+        
+        'Specify Target URL
+        URL = "[insert_api_url_here]"
+        
+        'Open Post Request
+        Request.Open "Post", URL, False
+        
+        'Request Header
+        Request.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
+        
+        'Create the POST data
+        postData = "apikey=" & API_KEY & "&number=" & batchNumbers & "&message=" & TextMessage & "&sendername=" & SENDER_NAME
+              
+        'Send the Post Data
+        Request.send postData
+        
+        'Get response status code & text
+        If Request.Status = 200 Then
+            StatusResponse = "Status Code: " & Request.Status & " | Status Text: Sent successfully!"
+        Else
+            StatusResponse = "Status Code: " & Request.Status & " | Status Text: " & Request.responseText
+        End If
+        
+        'Unlock sms sheet
+        wsSMS.Unprotect "[insert_your_password_here]"
+        
+        'Update status
+        wsSMS.Cells(batchIndex + 4, 2) = Format(Now, "mm/dd/yyy HH:mm:ss") & "| " & StatusResponse
+        wsSMS.Cells(batchIndex + 4, 1) = numbersInBatch
+        
+        'Lock sms sheet
+        wsSMS.Protect "[insert_your_password_here]"
+        
+        'Wait for 1 seconds
+        Application.Wait (Now + TimeValue("0:00:01"))
+        
+    Next batchIndex
+    
+    MsgBox "Done!"
+    
+Else
+    Exit Sub
+    
+End If
+
+End Sub
+
+Public Sub Get_Balance()
+
+Dim apiKEY As String
+Dim smsSheet As Worksheet
+Dim getRequest As Object
+Dim URL As String
+Dim payload As String
+
+On Error GoTo errHandling:
+
+Set smsSheet = ThisWorkbook.Sheets("SMS")
+
+'Get API key from sms sheet
+apiKEY = "[insert_your_api_here]"
+
+'Use XML HTTP
+Set getRequest = CreateObject("Microsoft.XMLHTTP")
+
+'Specify target url
+URL = "[insert_api_url_here]"
+
+'Construct the request data
+payload = "apikey=" & apiKEY
+
+'Open get request
+getRequest.Open "GET", URL & "?" & payload, False
+
+'Request Header
+getRequest.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
+
+'Send get request
+getRequest.send
+
+'Parse JSON response
+Dim jsonResponse As Object
+Set jsonResponse = JsonConverter.ParseJson(getRequest.responseText)
+
+'Access credit balance
+Dim creditBalance As Double
+creditBalance = jsonResponse("credit_balance")
+
+'Wait for 1 seconds
+Application.Wait (Now + TimeValue("0:00:01"))
+
+'Unlock sms sheet
+smsSheet.Unprotect "[insert_your_password_here]"
+
+smsSheet.Range("G3").Value = creditBalance
+
+'Lock sms sheet
+smsSheet.Protect "[insert_your_password_here]"
+
+'Clean up
+Set jsonResponse = Nothing
+Set getRequest = Nothing
+
+Exit Sub
+
+errHandling:
+MsgBox "Error encountered.", vbCritical, "Error!"
+
+End Sub
