@@ -1,0 +1,714 @@
+Option Explicit
+
+
+Sub TransferToDatabase()
+    Dim inputSheet As Worksheet
+    Dim databaseSheet As Worksheet
+    Dim rowCount As Long
+    Dim lastRow As Long
+    Dim response As VbMsgBoxResult
+    
+    Set inputSheet = Workbooks("Sales_Database.xlsm").Sheets("Sales_Input")
+    Set databaseSheet = Workbooks("Sales_Database.xlsm").Sheets("Sales")
+    
+    'Msgbox to confirm transfer
+    response = MsgBox("Proceed?", vbQuestion + vbYesNo, "Transfer Function")
+    
+    If response = vbYes Then
+    
+        'Unprotect sheet
+        'Sheets("Sales").Unprotect "[insert_password_here]"
+        
+        rowCount = inputSheet.Cells(Rows.Count, 1).End(xlUp).Row
+        
+        'We need to check if there is only one row of data or more than one
+        If rowCount = 2 Then
+        
+            'Go to input sheet and copy ONLY ONE ROW of encoded data
+            inputSheet.Range("A5").Select
+            Range(Selection, Selection.End(xlToRight)).Select
+            Selection.Copy
+        
+            Else
+                'Go to Input Sheet and Copy encoded data
+                inputSheet.Range("A5").Select
+                Range(Selection, Selection.End(xlDown)).Select
+                Range(Selection, Selection.End(xlToRight)).Select
+                Selection.Copy
+        End If
+        
+        'Go to Database Sheet and paste data
+        Sheets("Sales").Select
+        
+        lastRow = databaseSheet.Cells(Rows.Count, 1).End(xlUp).Row + 1
+        
+        databaseSheet.Cells(lastRow, 2).Select
+        
+        'Paste copied selection to ActiveSheet = "Sales" sheet
+        ActiveCell.PasteSpecial Paste:=xlPasteValues
+        
+        Application.CutCopyMode = False
+        
+        order_id
+        
+        'Protect sheet again
+        'Sheets("Sales").Protect "[insert_password_here]"
+        
+        Sheets("Sales_Input").Select
+        
+        Else
+            Exit Sub
+    End If
+        
+End Sub
+
+
+Sub CalculateCommission()
+    Dim net As Double
+    Dim Commission As Double
+    Dim Category As String
+    Dim Services As String
+    Dim lastCommRow As Long
+    Dim inputSheet As Worksheet
+    Dim serviceSheet As Worksheet
+    Dim Staff As String
+    Dim i As Long
+    
+    Set inputSheet = Workbooks("Sales_Database.xlsm").Sheets("Sales_Input")
+    
+    Set serviceSheet = Workbooks("Sales_Database.xlsm").Sheets("Services")
+    
+    lastCommRow = inputSheet.Cells(inputSheet.Rows.Count, 1).End(xlUp).Row
+    
+    For i = 5 To lastCommRow
+    
+    Staff = inputSheet.Cells(i, 11).Value
+    Services = inputSheet.Cells(i, 7).Value
+    Category = inputSheet.Cells(i, 6).Value
+    net = inputSheet.Cells(i, 10).Value
+    
+        If Category = "Massage" And Staff = "Arian" Then
+            
+            Commission = net * 0.25
+            
+        ElseIf Category = "Massage" And Staff <> "Arian" Then
+        
+            Commission = net * 0.15
+            
+        ElseIf Category = "IV Drip Package" Then
+            
+            Select Case Services
+                Case serviceSheet.Range("$C$99").Value, serviceSheet.Range("$C$100").Value, serviceSheet.Range("$C$101").Value, serviceSheet.Range("$C$102").Value, serviceSheet.Range("$C$103").Value, serviceSheet.Range("$C$104").Value
+                    Commission = 135
+                    
+                Case serviceSheet.Range("$C$105").Value, serviceSheet.Range("$C$106").Value, serviceSheet.Range("$C$107").Value, serviceSheet.Range("$C$108").Value, serviceSheet.Range("$C$109").Value, serviceSheet.Range("$C$110").Value
+                    Commission = 104
+            
+                Case serviceSheet.Range("$C$111").Value, serviceSheet.Range("$C$112").Value, serviceSheet.Range("$C$113").Value, serviceSheet.Range("$C$114").Value, serviceSheet.Range("$C$115").Value, serviceSheet.Range("$C$116").Value
+                    Commission = 104
+            
+                Case serviceSheet.Range("$C$117").Value, serviceSheet.Range("$C$118").Value, serviceSheet.Range("$C$119").Value, serviceSheet.Range("$C$120").Value, serviceSheet.Range("$C$121").Value, serviceSheet.Range("$C$122").Value
+                    Commission = 112
+            
+                Case serviceSheet.Range("$C$123").Value, serviceSheet.Range("$C$124").Value, serviceSheet.Range("$C$125").Value, serviceSheet.Range("$C$126").Value, serviceSheet.Range("$C$127").Value, serviceSheet.Range("$C$128").Value
+                    Commission = 287
+            
+                Case serviceSheet.Range("$C$129").Value, serviceSheet.Range("$C$130").Value, serviceSheet.Range("$C$131").Value, serviceSheet.Range("$C$132").Value, serviceSheet.Range("$C$133").Value, serviceSheet.Range("$C$134").Value, serviceSheet.Range("$C$135").Value, serviceSheet.Range("$C$136").Value, serviceSheet.Range("$C$137").Value, serviceSheet.Range("$C$138").Value, serviceSheet.Range("$C$139").Value, serviceSheet.Range("$C$140").Value
+                    Commission = 121
+            
+                Case serviceSheet.Range("$C$141").Value, serviceSheet.Range("$C$142").Value, serviceSheet.Range("$C$143").Value, serviceSheet.Range("$C$144").Value, serviceSheet.Range("$C$145").Value, serviceSheet.Range("$C$146").Value, serviceSheet.Range("$C$147").Value, serviceSheet.Range("$C$148").Value, serviceSheet.Range("$C$149").Value, serviceSheet.Range("$C$150").Value, serviceSheet.Range("$C$151").Value, serviceSheet.Range("$C$152").Value
+                    Commission = 93
+            
+                Case serviceSheet.Range("$C$153").Value, serviceSheet.Range("$C$154").Value, serviceSheet.Range("$C$155").Value, serviceSheet.Range("$C$156").Value, serviceSheet.Range("$C$157").Value, serviceSheet.Range("$C$158").Value, serviceSheet.Range("$C$159").Value, serviceSheet.Range("$C$160").Value, serviceSheet.Range("$C$161").Value, serviceSheet.Range("$C$162").Value, serviceSheet.Range("$C$163").Value, serviceSheet.Range("$C$164").Value
+                    Commission = 93
+            
+                Case serviceSheet.Range("$C$165").Value, serviceSheet.Range("$C$166").Value, serviceSheet.Range("$C$167").Value, serviceSheet.Range("$C$168").Value, serviceSheet.Range("$C$169").Value, serviceSheet.Range("$C$170").Value, serviceSheet.Range("$C$171").Value, serviceSheet.Range("$C$172").Value, serviceSheet.Range("$C$173").Value, serviceSheet.Range("$C$174").Value, serviceSheet.Range("$C$175").Value, serviceSheet.Range("$C$176").Value
+                    Commission = 100
+            
+                Case serviceSheet.Range("$C$177").Value, serviceSheet.Range("$C$178").Value, serviceSheet.Range("$C$179").Value, serviceSheet.Range("$C$180").Value, serviceSheet.Range("$C$181").Value, serviceSheet.Range("$C$182").Value, serviceSheet.Range("$C$183").Value, serviceSheet.Range("$C$184").Value, serviceSheet.Range("$C$185").Value, serviceSheet.Range("$C$186").Value, serviceSheet.Range("$C$187").Value, serviceSheet.Range("$C$188").Value
+                    Commission = 258
+            End Select
+            
+        Else
+            Commission = net * 0.1
+        End If
+    
+        inputSheet.Cells(i, 12).Value = Commission
+    Next i
+    
+End Sub
+
+
+Sub CalculateNet()
+    Dim i As Long
+    Dim lastRow As Long
+    Dim net As Double
+    Dim price As Double
+    Dim discount As Double
+    Dim inputSheet As Worksheet
+    
+    Set inputSheet = Workbooks("Sales_Database.xlsm").Sheets("Sales_Input")
+    
+    lastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    
+    For i = 5 To lastRow
+
+        price = inputSheet.Cells(i, 8).Value
+        discount = inputSheet.Cells(i, 9).Value
+    
+        net = price - discount
+    
+        inputSheet.Cells(i, 10).Value = net
+    
+    Next i
+
+End Sub
+
+
+Sub ClearContents()
+    Dim response As VbMsgBoxResult
+    
+    response = MsgBox("Proceed?", vbQuestion + vbYesNo, "Clear Function")
+    
+    If response = vbYes Then
+    
+    Range("A5").Select
+    Range(Selection, Selection.End(xlDown)).Select
+    Range(Selection, Selection.End(xlToRight)).Select
+    Selection.ClearContents
+    
+        Else
+            Exit Sub
+    End If
+
+End Sub
+
+
+Sub FillGaps()
+    Dim lastRow As Long
+    
+    lastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    
+    Range("A5").Resize(lastRow - 1, 12).Replace What:="", Replacement:="N/A"
+
+End Sub
+
+
+Sub order_id()
+
+Dim databaseSheet As Worksheet
+Dim lastRow As Long
+Dim newlastRow As Long
+Dim i As Long
+Dim x As Long
+
+Set databaseSheet = Workbooks("Sales_Database.xlsm").Sheets("Sales")
+
+lastRow = databaseSheet.Cells(Rows.Count, 1).End(xlUp).Row + 1
+
+newlastRow = databaseSheet.Cells(Rows.Count, 2).End(xlUp).Row
+
+For i = lastRow To newlastRow
+    
+    x = databaseSheet.Cells(i - 1, 1).Value + 1
+    
+    databaseSheet.Cells(i, 1).Value = x
+
+Next i
+
+End Sub
+
+Option Explicit
+
+Sub TransferToExpenseDatabase()
+    Dim inputSheet As Worksheet
+    Dim databaseSheet As Worksheet
+    Dim rowCount As Long
+    Dim lastRow As Long
+    Dim response As VbMsgBoxResult
+    
+    Set inputSheet = Workbooks("Sales_Database.xlsm").Sheets("Expenses_Input")
+    Set databaseSheet = Workbooks("Sales_Database.xlsm").Sheets("Expenses")
+    
+    'Msgbox to confirm transfer
+    response = MsgBox("Proceed?", vbQuestion + vbYesNo, "Transfer Function")
+    
+    If response = vbYes Then
+    
+        'Unprotect sheet
+        Sheets("Expenses").Unprotect "[insert_password_here]"
+        
+        rowCount = inputSheet.Cells(Rows.Count, 1).End(xlUp).Row
+        
+        'We need to check if there is only one row of data or more than one
+        If rowCount = 2 Then
+        
+            'Go to input sheet and copy ONLY ONE ROW of encoded data
+            inputSheet.Range("A5").Select
+            Range(Selection, Selection.End(xlToRight)).Select
+            Selection.Copy
+        
+            Else
+                'Go to Input Sheet and Copy encoded data
+                inputSheet.Range("A5").Select
+                Range(Selection, Selection.End(xlDown)).Select
+                Range(Selection, Selection.End(xlToRight)).Select
+                Selection.Copy
+        End If
+        
+        'Go to Database Sheet and paste data
+        Sheets("Expenses").Select
+        
+        lastRow = databaseSheet.Cells(Rows.Count, 1).End(xlUp).Row + 1
+        
+        databaseSheet.Cells(lastRow, 1).Select
+        
+        'Paste copied selection to ActiveSheet = "Sales" sheet
+        ActiveCell.PasteSpecial Paste:=xlPasteValues
+        
+        'Protect sheet again
+        Sheets("Expenses").Protect "[insert_password_here]"
+        
+        Sheets("Expenses_Input").Select
+        Application.CutCopyMode = False
+        
+        Else
+            Exit Sub
+    End If
+        
+End Sub
+
+
+Sub FillExpenseGaps()
+    Dim lastRow As Long
+    
+    lastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    
+    Range("A5").Resize(lastRow - 1, 4).Replace What:="", Replacement:="N/A"
+
+End Sub
+
+Option Explicit
+
+Sub EnterMonths1()
+    Dim lastRow As Long
+    Dim i As Long
+    Dim pivotSheet As Worksheet
+    Dim monthValue As Integer
+    Dim monthString As String
+    
+    lastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    
+    Set pivotSheet = Workbooks("Sales_Database.xlsm").Sheets("pivot1")
+    
+    On Error GoTo Invalid
+    For i = 6 To lastRow
+        
+        monthValue = Month(Cells(i, 1))
+        
+        Select Case monthValue
+        
+            Case 1
+                monthString = "January"
+            Case 2
+                monthString = "February"
+            Case 3
+                monthString = "March"
+            Case 4
+                monthString = "April"
+            Case 5
+                monthString = "May"
+            Case 6
+                monthString = "June"
+            Case 7
+                monthString = "July"
+            Case 8
+                monthString = "August"
+            Case 9
+                monthString = "September"
+            Case 10
+                monthString = "October"
+            Case 11
+                monthString = "November"
+            Case 12
+                monthString = "December"
+            
+        End Select
+                      
+        Cells(i, 4).Value = monthString
+    Next
+    
+
+Invalid:
+Exit Sub
+
+End Sub
+
+
+Sub UpdatePivot()
+    Dim pivotTable1 As pivotTable
+    Dim pivotField1 As pivotField
+    Dim pivotItem1 As pivotItem
+    
+    'Set reference of PivotTable1
+    Set pivotTable1 = Workbooks("Sales_Database.xlsm").Sheets("pivot1").PivotTables("PivotTable1")
+    
+    'Set reference of pivot field "Date"
+    Set pivotField1 = pivotTable1.PivotFields("Date")
+    
+    'Go to pivot1 sheet
+    Sheets("pivot1").Select
+    
+    pivotTable1.RefreshTable
+    
+    'Clear all filters in Date
+    pivotField1.ClearAllFilters
+    
+    'Set all items to visible = True
+    For Each pivotItem1 In pivotField1.PivotItems
+        pivotItem1.Visible = True
+    Next pivotItem1
+    
+    'Place months beside PivotTable1
+    EnterMonths1
+    
+    Dim pivotTable2 As pivotTable
+    Dim pivotfield2 As pivotField
+    Dim pivotItem2 As pivotItem
+    
+    'Set reference of PivotTable2
+    Set pivotTable2 = Workbooks("Sales_Database.xlsm").Sheets("pivot2").PivotTables("PivotTable2")
+    
+    'Set reference of pivot field "Month"
+    Set pivotfield2 = pivotTable2.PivotFields("Month")
+    
+    'Go to pivot2 sheet
+    Sheets("pivot2").Select
+    
+    pivotTable2.RefreshTable
+    
+    'Clear all filters in Month
+    pivotfield2.ClearAllFilters
+    
+    'Set all items to visible = True
+    For Each pivotItem2 In pivotfield2.PivotItems
+        pivotItem2.Visible = True
+    Next pivotItem2
+    
+    Dim pivotTable3 As pivotTable
+    Dim pivotfield3 As pivotField
+    Dim pivotitem3 As pivotItem
+    
+    Set pivotTable3 = Workbooks("Sales_Database.xlsm").Sheets("pivot3").PivotTables("PivotTable3")
+    
+    Set pivotfield3 = pivotTable3.PivotFields("Month")
+    
+    Sheets("pivot3").Select
+    
+    pivotTable3.RefreshTable
+    
+    pivotfield3.ClearAllFilters
+    
+    For Each pivotitem3 In pivotfield3.PivotItems
+        pivotitem3.Visible = True
+    Next pivotitem3
+    
+    
+    'Return to Dashboard sheet
+    Sheets("Dashboard").Select
+    
+End Sub
+
+
+Sub NicknameMonth()
+    Dim i As Long
+    Dim employee As String
+    Dim nickname As String
+    
+    For i = 2 To 13
+        
+        employee = Cells(51, i).Value
+        
+        Select Case employee
+            Case "[EMPLOYEE NAME]"
+                nickname = "Anna"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Arian"
+            
+            Case "[EMPLOYEE NAME]"
+                nickname = "Marie"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Aloha"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Faye"
+            
+            Case "[EMPLOYEE NAME]"
+                nickname = "Gie"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Anne"
+            
+            Case "[EMPLOYEE NAME]"
+                nickname = "JR"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Jane"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Sheena"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Mercy"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Mildred"
+            
+            Case ""
+                nickname = ""
+            
+        End Select
+    
+    Cells(52, i).Value = nickname
+    
+    Next i
+
+End Sub
+
+Sub NicknameOverall()
+    Dim i As Long
+    Dim employee As String
+    Dim nickname As String
+    
+    For i = 2 To 13
+        
+        employee = Cells(59, i).Value
+        
+        Select Case employee
+            Case "[EMPLOYEE NAME]"
+                nickname = "Anna"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Arian"
+            
+            Case "[EMPLOYEE NAME]"
+                nickname = "Marie"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Aloha"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Faye"
+            
+            Case "[EMPLOYEE NAME]"
+                nickname = "Gie"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Anne"
+            
+            Case "[EMPLOYEE NAME]"
+                nickname = "JR"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Jane"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Sheena"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Mercy"
+                
+            Case "[EMPLOYEE NAME]"
+                nickname = "Mildred"
+            
+            Case ""
+                nickname = ""
+            
+        End Select
+    
+    Cells(60, i).Value = nickname
+    
+    Next i
+
+End Sub
+
+##################
+Events
+##################
+
+Option Explicit
+
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    Application.EnableEvents = False
+    
+    On Error GoTo Invalid
+    If Target.Column = 6 And Target.Row >= 5 Then
+        If Target.Value = "" Then
+            Target.Offset(0, 1).Validation.Delete
+        
+        ElseIf Target.Value = "Nail Services" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$2:$C$18"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+        
+        ElseIf Target.Value = "Hand Care" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$19:$C$25"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+            
+        ElseIf Target.Value = "Foot Care" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$26:$C$33"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+        
+        ElseIf Target.Value = "Threading" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$34:$C$39"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+            
+        ElseIf Target.Value = "Waxing" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$40:$C$69"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+        
+        ElseIf Target.Value = "Eyelash" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$70:$C$80"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+        
+        ElseIf Target.Value = "Massage" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$81:$C$93"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+            
+        ElseIf Target.Value = "IV Drip" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$94:$C$98"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+        
+        ElseIf Target.Value = "IV Drip Package" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$99:$C$188"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+            
+        ElseIf Target.Value = "RF" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$189:$C$193"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+        
+        ElseIf Target.Value = "8K Cavitation" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$194:$C$197"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+        
+        ElseIf Target.Value = "Muscle Stimulation" Then
+            Target.Offset(0, 1).ClearContents
+            
+            With Target.Offset(0, 1).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=Services!$C$198:$C$200"
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowInput = True
+                .ShowError = True
+            End With
+            
+        End If
+        
+    End If
+    
+    If Target.Column = 7 And Target.Row >= 5 Then
+        If Target.Value = "" Then
+            Target.Offset(0, 1).ClearContents
+            
+        ElseIf Target.Value <> "" Then
+            Target.Offset(0, 1).Formula = "=INDEX(Services!$A$1:$D$199,MATCH(" & Target.Address & ",Services!$C$1:$C$199,0),MATCH(H$4,Services!$A$1:$D$1,0))"
+        
+        End If
+    
+    End If
+    
+    
+Invalid:
+    Application.EnableEvents = True
+End Sub
