@@ -1,0 +1,115 @@
+Option Explicit
+
+Enum SMSCols
+    Receiver = 2    ' col B
+    TextMessage = 3 ' col C
+    Status = 5      ' col E
+    RateLimit = 6   ' col F
+    RateLReset = 7  ' col G
+End Enum
+
+Private Const StartRow As Long = 4
+
+Public Sub Send_SMS()
+
+Dim wb As Workbook
+Dim ws As Worksheet
+Dim Request As Object
+Dim response As Object
+Dim ACCESS_TOKEN As String
+Dim TARGET_DEVICE_IDEN As String
+Dim ReceiverNumber As String
+Dim TextMessage As String
+Dim StatusResponse As String
+Dim RateLimitRemaining As String
+Dim RateLimitReset As String
+Dim postData As String
+Dim Url As String
+Dim LastRow_Receiver As Long
+Dim LastRow_Status As Long
+Dim i As Long
+Dim messageBox As VbMsgBoxResult
+
+Set wb = ThisWorkbook
+Set ws = wb.Sheets("SMS")
+          
+'Msgbox to confirm transfer
+messageBox = MsgBox("Proceed?", vbQuestion + vbYesNo, "Send SMS?")
+
+If messageBox = vbYes Then
+
+    'Authentication & Target Device ID
+    ACCESS_TOKEN = ws.Range("C1").Value
+    TARGET_DEVICE_IDEN = """" & ws.Range("C2").Value & """"
+    
+    'Get last row number
+    LastRow_Receiver = ws.Cells(Rows.Count, SMSCols.Receiver).End(xlUp).Row
+    LastRow_Status = ws.Cells(Rows.Count, SMSCols.Status).End(xlUp).Row
+    
+    'Clear Status
+    If LastRow_Status > StartRow - 1 Then
+        ws.Range(Cells(StartRow, SMSCols.Status), Cells(LastRow_Status, SMSCols.Status)).ClearContents
+    End If
+    
+    For i = StartRow To LastRow_Receiver
+              
+        'Get receiver number & text message
+        ReceiverNumber = """" & ws.Cells(i, SMSCols.Receiver).Value & """"
+        TextMessage = """" & ws.Cells(i, SMSCols.TextMessage).Value & """"
+                  
+        'Remove line breaks (as this will lead to JSON error)
+        TextMessage = Replace(TextMessage, vbCrLf, vbLf)
+        TextMessage = Replace(TextMessage, vbLf, "\n")
+    
+        'Use XML HTTP
+        Set Request = CreateObject("Microsoft.XMLHTTP")
+                  
+        'Specify Target URL
+        Url = "https://api.pushbullet.com/v2/texts"
+              
+        'Open Post Request
+        Request.Open "Post", Url, False
+              
+        'Request Header
+        Request.setRequestHeader "Access-Token", ACCESS_TOKEN
+        Request.setRequestHeader "Content-Type", "application/json;charset=UTF-8"
+              
+        'Concatenate PostData
+        postData = "{""data"":{""target_device_iden"":" & TARGET_DEVICE_IDEN & ",""addresses"":[" & ReceiverNumber & "],""message"":" & TextMessage & "}}"
+              
+        'Send the Post Data
+        Request.send postData
+        
+        'Get response status code & text
+        StatusResponse = "Status Code: " & Request.Status & " | Status Text: " & Request.responseText
+        
+        If Request.getResponseHeader("x-ratelimit-remaining") <> "" Then
+            RateLimitRemaining = Request.getResponseHeader("x-ratelimit-remaining")
+            ws.Cells(i, SMSCols.RateLimit) = RateLimitRemaining
+        End If
+        
+        If Request.getResponseHeader("x-ratelimit-reset") <> "" Then
+            RateLimitReset = Request.getResponseHeader("x-ratelimit-reset")
+            ws.Cells(i, SMSCols.RateLReset) = DateAdd("s", RateLimitReset, "1970-01-01 00:00:00")
+        End If
+    
+        'Return status to worksheet
+        ws.Cells(i, SMSCols.Status) = Format(Now, "mm/dd/yyyy HH:mm:ss") & "| " & StatusResponse
+    
+        'Scroll to the status response cell
+        Application.Goto ws.Cells(i, SMSCols.Status)
+    
+        'Wait for 25 seconds
+        Application.Wait (Now + TimeValue("0:00:25"))
+              
+    Next i
+    
+    MsgBox "Done!"
+
+Else
+    Exit Sub
+
+End If
+
+End Sub
+
