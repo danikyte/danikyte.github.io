@@ -1,0 +1,218 @@
+#####################
+Module 1
+#####################
+
+Option Explicit
+
+Sub stocks_delivered()
+
+    frmDelivered.Show
+
+End Sub
+
+
+Sub stocks_used()
+
+    frmUsed.Show
+
+End Sub
+
+##########################
+User forms - frmDelivered
+##########################
+
+Option Explicit
+
+Private Sub cmdEnter_Click()
+
+    Dim stockUpdates As Worksheet
+    Dim wb As Workbook
+    Dim lastRow As Long
+    
+    Set wb = ThisWorkbook
+    Set stockUpdates = wb.Sheets("Stock Updates")
+    
+    'Get last row and add 1 to adjust to the next blank cell
+    lastRow = stockUpdates.Cells(Rows.Count, 1).End(xlUp).Row + 1
+    
+    'Format date delivered
+    Dim dateString As String
+    Dim formattedDate As Date
+    
+    dateString = tbxDateDelivered.Value
+    
+    On Error GoTo ErrorHandler
+    formattedDate = CDate(dateString)
+    On Error GoTo 0
+    
+    'Get Item ID value from lstItemID
+    Dim itemID As Long
+    
+    itemID = lstItemID.Value
+    
+    'Get Quantity from tbxQuantityDelivered
+    Dim quantityString As String
+    Dim quantity As Integer
+    
+    quantityString = tbxQuantityDelivered.Value
+    
+    On Error GoTo ErrorHandler
+    quantity = CInt(quantityString)
+    On Error GoTo 0
+    
+    'Get remarks from tbxRemarks
+    Dim remarks As String
+    
+    remarks = tbxRemarks.Value
+    
+    'Assign values collected to lastRow
+    With stockUpdates
+    
+        .Cells(lastRow, 1).Value = formattedDate
+        .Cells(lastRow, 2).Value = itemID
+        .Cells(lastRow, 3).Value = quantity
+        .Cells(lastRow, 5).Value = remarks
+    
+    End With
+
+Exit Sub
+
+ErrorHandler:
+MsgBox "Please enter valid format."
+    
+End Sub
+
+Private Sub cmdExit_Click()
+
+    Unload Me
+
+End Sub
+
+
+Private Sub UserForm_Click()
+    
+End Sub
+
+Private Sub UserForm_Initialize()
+
+    Dim inventoryTracker As Worksheet
+    Dim wb As Workbook
+    Dim lastRow As Long
+    Dim rng As Range
+    Dim cell As Range
+    
+    Set wb = ThisWorkbook
+    Set inventoryTracker = wb.Sheets("Inventory Tracker")
+
+    lastRow = inventoryTracker.Cells(Rows.Count, 2).End(xlUp).Row
+    
+    Set rng = inventoryTracker.Range("B7:B" & lastRow)
+    
+    lstItemID.Clear
+    
+    For Each cell In rng
+    
+        lstItemID.AddItem cell.Value
+    
+    Next cell
+
+End Sub
+
+#############################
+User form - frmUsed
+#############################
+
+Option Explicit
+
+Private Sub cmdEnter_Click()
+
+    Dim stockUpdates As Worksheet
+    Dim wb As Workbook
+    Dim lastRow As Long
+    
+    Set wb = ThisWorkbook
+    Set stockUpdates = wb.Sheets("Stock Updates")
+    
+    'Get last row and add 1 to adjust to the next blank cell
+    lastRow = stockUpdates.Cells(Rows.Count, 1).End(xlUp).Row + 1
+    
+    'Format date delivered
+    Dim dateString As String
+    Dim formattedDate As Date
+    
+    dateString = tbxDateUsed.Value
+    
+    On Error GoTo ErrorHandler
+    formattedDate = CDate(dateString)
+    On Error GoTo 0
+    
+    'Get Item ID value from lstItemID
+    Dim itemID As Long
+    
+    itemID = lstItemID.Value
+    
+    'Get Quantity from tbxQuantityDelivered
+    Dim quantityString As String
+    Dim quantity As Long
+    
+    quantityString = tbxQuantityUsed.Value
+    
+    On Error GoTo ErrorHandler
+    quantity = CInt(quantityString)
+    On Error GoTo 0
+    
+    'Get remarks from tbxRemarks
+    Dim remarks As String
+    
+    remarks = tbxRemarks.Value
+    
+    'Assign values collected to lastRow
+    With stockUpdates
+    
+        .Cells(lastRow, 1).Value = formattedDate
+        .Cells(lastRow, 2).Value = itemID
+        .Cells(lastRow, 4).Value = quantity
+        .Cells(lastRow, 5).Value = remarks
+    
+    End With
+
+Exit Sub
+
+ErrorHandler:
+MsgBox "Please enter valid format."
+
+End Sub
+
+Private Sub cmdExit_Click()
+    Unload Me
+    
+End Sub
+
+Private Sub UserForm_Click()
+
+End Sub
+
+Private Sub UserForm_Initialize()
+
+    Dim inventoryTracker As Worksheet
+    Dim wb As Workbook
+    Dim lastRow As Long
+    Dim rng As Range
+    Dim cell As Range
+    
+    Set wb = ThisWorkbook
+    Set inventoryTracker = wb.Sheets("Inventory Tracker")
+
+    lastRow = inventoryTracker.Cells(Rows.Count, 2).End(xlUp).Row
+    
+    Set rng = inventoryTracker.Range("B7:B" & lastRow)
+    
+    lstItemID.Clear
+    
+    For Each cell In rng
+    
+        lstItemID.AddItem cell.Value
+    
+    Next cell
+
+End Sub
