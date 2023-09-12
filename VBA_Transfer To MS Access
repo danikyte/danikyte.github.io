@@ -1,0 +1,172 @@
+###########################################
+Module 1 - Database_Connection
+###########################################
+
+Option Explicit
+
+Public cnnDatabase As ADODB.Connection
+Public blnIsConnected As Boolean
+
+Public Sub Connect_Database()
+
+blnIsConnected = False
+
+On Error GoTo errHandling
+
+Set cnnDatabase = New ADODB.Connection
+
+With cnnDatabase
+    .Provider = "Microsoft.ACE.OLEDB.12.0"
+    .ConnectionString = "Data Source = [insert_file_path_here]"    ' don't forget to include the file name itself
+    .Properties("Jet OLEDB:Database Password") = ""
+    .Open
+End With
+
+blnIsConnected = True
+
+Exit Sub
+
+errHandling:
+MsgBox "Connection to database failed!", vbCritical, "error!"
+
+End Sub
+
+
+Public Sub Disconnect_Database()
+
+cnnDatabase.Close
+
+Set cnnDatabase = Nothing
+blnIsConnected = False
+
+End Sub
+
+#################################
+Module 2 - Database_Download
+#################################
+
+Option Explicit
+
+Sub DB_Download()
+
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+
+Dim sheetDown As Worksheet
+Dim sql_query As String
+Dim rstDatabase As ADODB.Recordset
+Dim download_row As Integer
+
+Set sheetDown = Sheets("DOWNLOAD")
+sql_query = Workbooks("Transfer to Access.xlsm").Sheets("Download").Cells(1, 2).Value
+
+Call Connect_Database
+
+Set rstDatabase = New ADODB.Recordset
+download_row = 5
+
+With rstDatabase
+    .Open Source:=sql_query, ActiveConnection:=cnnDatabase   'PLACE SQL QUERY TO BE READ BY MS ACCESS IN Cells(1,2).value
+    Do While Not .EOF
+        'Code to control the current record
+        sheetDown.Cells(download_row, 1).Value = .Fields("order_id")
+        sheetDown.Cells(download_row, 2).Value = .Fields("order_date")
+        sheetDown.Cells(download_row, 3).Value = .Fields("customer_name")
+        sheetDown.Cells(download_row, 4).Value = .Fields("service")
+        sheetDown.Cells(download_row, 5).Value = .Fields("net")
+        download_row = download_row + 1
+        .movenext
+    Loop
+
+End With
+
+Call Disconnect_Database
+
+Application.Calculation = xlCalculationAutomatic
+
+End Sub
+
+####################################
+Module 3 - Database_Upload
+####################################
+
+Option Explicit
+
+Sub DB_Upload()
+
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+
+'Dim folder_path As String, file_extension As String, input_file As String, destination_path As String
+Dim wbData As Workbook
+Dim sheetData As Worksheet
+Dim row_upload As Integer, loaded_file_count As Integer
+Dim rstDatabase As ADODB.Recordset
+
+'Call InitializeVariables
+Call Connect_Database
+
+Set rstDatabase = New ADODB.Recordset
+
+With rstDatabase
+
+    .Open Source:="orders", ActiveConnection:=cnnDatabase, Locktype:=adLockOptimistic
+
+    'Do While input_file <> ""
+        'Set wbData = Workbooks.Open(Filename:=folder_path & input_file) 'currently commenting this one out as only transferring from one file
+        Set wbData = Workbooks("Transfer to Access.xlsm") 'comment this one out if multiple files upload to Access
+        Set sheetData = wbData.Sheets("Upload")
+    
+        row_upload = 4
+        
+        Do While Not IsEmpty(sheetData.Cells(row_upload, 1))
+            'Code to load the data into Access
+            .AddNew
+            .Fields("order_id") = sheetData.Cells(row_upload, 1)
+            .Fields("order_date") = sheetData.Cells(row_upload, 2)
+            .Fields("order_month") = sheetData.Cells(row_upload, 3)
+            .Fields("customer_name") = sheetData.Cells(row_upload, 4)
+            .Fields("contact_number") = sheetData.Cells(row_upload, 5)
+            .Fields("city") = sheetData.Cells(row_upload, 6)
+            .Fields("service_category") = sheetData.Cells(row_upload, 7)
+            .Fields("service") = sheetData.Cells(row_upload, 8)
+            .Fields("price") = sheetData.Cells(row_upload, 9)
+            .Fields("discount") = sheetData.Cells(row_upload, 10)
+            .Fields("net") = sheetData.Cells(row_upload, 11)
+            .Fields("staff") = sheetData.Cells(row_upload, 12)
+            .Fields("commission") = sheetData.Cells(row_upload, 13)
+            .Update
+            
+            row_upload = row_upload + 1
+        Loop
+        
+        'wbData.Close
+        'Call Move_File(input_folder:=folder_path, destination_folder:=destination_path, input_file:=input_file)
+        'loaded_file_count = loaded_file_count + 1
+        'input_file = Dir
+        
+    'Loop
+
+End With
+
+Call Disconnect_Database
+
+'If loaded_file_count > 0 Then
+    'MsgBox loaded_file_count & " input files loaded in database!", vbInformation, "Microsoft Access Database"
+'Else
+    'MsgBox "No input file loaded in database", vbExclamation, "Microsoft Access Database"
+'End If
+
+Application.Calculation = xlCalculationAutomatic
+
+End Sub
+
+Private Sub Move_File(input_folder As String, destination_folder As String, input_file As String)
+
+Dim FSO As Object
+
+Set FSO = CreateObject("Scripting.filesystemobject")
+FSO.Movefile Source:=input_folder & input_file, Destination:=destination_folder & input_file
+
+
+End Sub
