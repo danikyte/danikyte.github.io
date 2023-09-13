@@ -1,0 +1,217 @@
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+
+# set working directory
+
+getwd()
+setwd("[set_working_directory]")
+getwd()
+
+# load data frames
+
+tripdata_202207 <- read_csv("202207-divvy-tripdata.csv")
+head(tripdata_202207)
+str(tripdata_202207)
+
+tripdata_202208 <- read_csv("202208-divvy-tripdata.csv")
+head(tripdata_202208)
+str(tripdata_202208)
+
+tripdata_202209 <- read_csv("202209-divvy-tripdata.csv")
+head(tripdata_202209)
+str(tripdata_202209)
+
+tripdata_202210 <- read_csv("202210-divvy-tripdata.csv")
+head(tripdata_202210)
+str(tripdata_202210)
+
+tripdata_202211 <- read_csv("202211-divvy-tripdata.csv")
+head(tripdata_202211)
+str(tripdata_202211)
+
+tripdata_202212 <- read_csv("202212-divvy-tripdata.csv")
+head(tripdata_202212)
+str(tripdata_202212)
+
+tripdata_202301 <- read_csv("202301-divvy-tripdata.csv")
+head(tripdata_202301)
+str(tripdata_202301)
+
+tripdata_202302 <- read_csv("202302-divvy-tripdata.csv")
+head(tripdata_202302)
+str(tripdata_202302)
+
+tripdata_202303 <- read_csv("202303-divvy-tripdata.csv")
+head(tripdata_202303)
+str(tripdata_202303)
+
+tripdata_202304 <- read_csv("202304-divvy-tripdata.csv")
+head(tripdata_202304)
+str(tripdata_202304)
+
+tripdata_202305 <- read_csv("202305-divvy-tripdata.csv")
+head(tripdata_202305)
+str(tripdata_202305)
+
+tripdata_202306 <- read_csv("202306-divvy-tripdata.csv")
+head(tripdata_202306)
+str(tripdata_202306)
+
+tripdata <- rbind(tripdata_202306, tripdata_202305, tripdata_202304, tripdata_202303, tripdata_202302, 
+                  tripdata_202301, tripdata_202212, tripdata_202211, tripdata_202210, tripdata_202209, 
+                  tripdata_202208, tripdata_202207)
+
+# Explore data frame
+head(tripdata)
+str(tripdata)
+summary(tripdata)
+View(tripdata)
+
+# filter data with ended_at > started_at
+tripdata <- tripdata %>% filter(ended_at > started_at)
+
+# calculate time elapsed per ride or ride_length
+tripdata <- mutate(tripdata, ride_length = ended_at - started_at)
+
+# get the day_of_week
+tripdata <- mutate(tripdata, day_of_week = weekdays(tripdata$started_at))
+
+str(tripdata)
+View(tripdata)
+
+# convert member_casual, day_of_week, and rideable_type into factors (categorical)
+day_order <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+tripdata$day_of_week <- factor(tripdata$day_of_week, levels = day_order)
+
+tripdata$member_casual <- factor(tripdata$member_casual)
+
+tripdata$rideable_type <- factor(tripdata$rideable_type)
+
+str(tripdata)
+
+# Conduct descriptive analysis
+library(knitr)
+
+mode_day_of_week <- tripdata %>% 
+  group_by(day_of_week) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  filter(row_number() == 1) %>% 
+  pull(day_of_week)
+
+desc_analysis <- tripdata %>% group_by(member_casual) %>% 
+  summarize(mean_ride_length = mean(ride_length),
+            median_ride_length = median(ride_length),
+          max_ride_length = max(ride_length),
+          min_ride_length = min(ride_length), 
+          mode_day_of_week = mode_day_of_week)
+
+kable(desc_analysis)
+
+# calculate average ride_length for members and casual riders
+aggregate(tripdata$ride_length ~ tripdata$member_casual, FUN = mean)
+aggregate(tripdata$ride_length ~ tripdata$member_casual, FUN = median)
+aggregate(tripdata$ride_length ~ tripdata$member_casual, FUN = max)
+aggregate(tripdata$ride_length ~ tripdata$member_casual, FUN = min)
+
+tripdata %>% filter(member_casual == 'member') %>% 
+  summarize(member_avg_ride_length = mean(ride_length))
+
+tripdata %>% filter(member_casual == 'casual') %>% 
+  summarize(casual_avg_ride_length = mean(ride_length))
+
+# calculate average ride_length by member_casual and day_of_week
+
+aggregate(tripdata$ride_length ~ tripdata$member_casual + tripdata$day_of_week, FUN = mean)
+
+tripdata %>% group_by(member_casual, day_of_week) %>% 
+  summarize(avg_ride_length = mean(ride_length))
+
+# calculate the count of rides of users by day_of_week
+
+tripdata %>% mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)
+
+
+tripdata %>% group_by(member_casual, day_of_week) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, day_of_week)
+
+# count of rideable type and member_casual
+
+tripdata %>% group_by(rideable_type, member_casual) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(number_of_rides) %>% 
+  ggplot(aes(x=rideable_type, y=number_of_rides, fill=member_casual)) + 
+  geom_col() + labs(title="Number of Rides Per Rideable Type")
+
+tripdata %>% group_by(rideable_type, member_casual) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(number_of_rides) %>% 
+  ggplot(aes(x=rideable_type, y=average_duration, fill=member_casual)) + 
+  geom_col() + labs(title="Average Duration Per Rideable Type")
+
+tripdata %>% filter(rideable_type == "docked_bike") %>% 
+  group_by(rideable_type, day_of_week) %>%
+  summarise(average_duration = mean(ride_length)) %>% 
+  arrange(day_of_week) %>% 
+  ggplot(aes(x=day_of_week, y=average_duration)) + 
+  geom_col(fill="blue", position="dodge") + labs(title="Docked Bike Average Duration for the Week")
+
+# visualizing the number of rides by rider type
+
+tripdata %>% mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday) %>% 
+  ggplot(aes(x=weekday, y=number_of_rides, fill=member_casual)) + 
+  geom_col(position="dodge")
+
+
+tripdata %>% group_by(member_casual, day_of_week) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, day_of_week) %>% 
+  ggplot(aes(x=day_of_week, y=number_of_rides, fill=member_casual)) + 
+  geom_col(position="dodge") + labs(title="Number of Rides of Casual and Member")
+
+
+# visualizing for average duration
+
+tripdata %>% mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday) %>% 
+  ggplot(aes(x=weekday, y=average_duration, fill=member_casual)) + 
+  geom_col(position="dodge")
+
+
+
+tripdata %>% group_by(member_casual, day_of_week) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, day_of_week) %>% 
+  ggplot(aes(x=day_of_week, y=average_duration, fill=member_casual)) + 
+  geom_col(position="dodge") + labs(title="Average Ride Duration of Casual and Member")
+
+# save as csv file
+
+install.packages("data.table")
+library(data.table)
+
+getwd()
+fwrite(tripdata, "tripdata.csv")
+
+# to export markdown into PDF
+
+install.packages("tinytex")
+tinytex::install_tinytex()
+
+##############################################################################################
+#
+#  also visualized in tableau
+#  https://public.tableau.com/app/profile/daniel.gravador/viz/CaseStudy1-Cyclistic/Dashboard1
+#
+##############################################################################################
