@@ -1,0 +1,185 @@
+function transferToDatabase() {
+  var inputSheet = SpreadsheetApp.openById("1DswC_BpfSwY2lGwP4FCt-cjcbtK4QJfH717gYSRwRDc").getSheetByName("Input");
+  var databaseSheet = SpreadsheetApp.openById("1DswC_BpfSwY2lGwP4FCt-cjcbtK4QJfH717gYSRwRDc").getSheetByName("Database");
+  var rowCount;
+  var response;
+  
+  //Msgbox to confirm transfer
+  var ui = SpreadsheetApp.getUi();
+  var response = ui.alert("Transfer Function", "Proceed?", ui.ButtonSet.YES_NO);
+  
+  if (response == ui.Button.YES) {
+    rowCount = inputSheet.getLastRow();
+    
+    if (rowCount >= 5) {
+      // Copy encoded data
+      var rangeToCopy = inputSheet.getRange("A5:J" + rowCount);
+      rangeToCopy.copyTo(databaseSheet.getRange(databaseSheet.getLastRow() + 1, 1), { contentsOnly: true });
+    }
+    
+    SpreadsheetApp.flush(); // Ensure all pending Spreadsheet changes are applied
+    
+    inputSheet.activate();
+    SpreadsheetApp.getActiveSpreadsheet().toast("Transfer completed.", "Status", 3);
+  } else {
+    return;
+  }
+}
+
+function fillGaps() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var lastRow = sheet.getLastRow();
+  
+  var range = sheet.getRange("A5:J" + lastRow);
+  var values = range.getValues();  // Get all the values in the range
+  
+  // iterate through the two-dimensional array of range
+  for (var i = 0; i < values.length; i++) {
+    for (var j = 0; j < values[i].length; j++) {
+      if (values[i][j] === "") {
+        values[i][j] = "N/A"; // replace blank cells with N/A
+      }
+    }
+  }
+  range.setValues(values);  // Set the modified values back to the range
+
+  for (var x = 5; x <= 25; x++) {
+    var formula = '=IF(C' + x + '="", "", TEXT(C' + x + ', "dddd"))';
+    sheet.getRange("D" + x).setFormula(formula);
+  }
+}
+
+
+function calculateTotalHours() {
+  var inputSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Input");
+  var lastCommRow = inputSheet.getLastRow();
+  
+  for (var i = 5; i <= lastCommRow; i++) {
+    var remarks = inputSheet.getRange(i, 5).getValue();
+    
+    var timeInSchedule = inputSheet.getRange(i, 6).getValue();
+    var timeOutSchedule = inputSheet.getRange(i, 7).getValue();
+    
+    var timeInActual = inputSheet.getRange(i, 8).getValue();
+    var timeOutActual = inputSheet.getRange(i, 9).getValue();
+    
+    var totalHours;
+    var late = 0;
+    var halfDay = 0;
+    var undertime = 0;
+    
+    if (remarks === "Stay In") {
+      totalHours = 8;
+    } else if (remarks === "Absent") {
+      totalHours = 0;
+    } else if (remarks === "Regular Schedule") {
+      
+      var hoursLate = (timeInActual - timeInSchedule) * 24;
+      
+      // Check if employee is late
+      if (hoursLate <= 0.25) { // 15 mins grace period
+        late = 0
+        halfDay = 0;
+      } else if (hoursLate > 0.25 && hoursLate <= 1) { // Minus 1 hr if more than 15mins
+        late = 1
+        halfDay = 0;
+      } else if (hoursLate > 1) { // Considered half day if more than 1 hr late
+        late = 0
+        halfDay = 4;
+      }
+      
+      var hoursUndertime = (timeOutSchedule - timeOutActual) * 24;
+      
+      // Check if employee is undertime
+      if (hoursUndertime > 0.08 && hoursUndertime < 4) {
+        undertime = Math.ceil(hoursUndertime);
+      } else if (hoursUndertime >= 4) {
+        undertime = Math.ceil(hoursUndertime) - 1;
+      }
+      
+      totalHours = 8 - late - halfDay - undertime;
+    }
+    
+    inputSheet.getRange(i, 10).setValue(totalHours);
+  }
+}
+
+##################
+# Events
+##################
+
+// Create data validation for time in and time out schedule when changes in cells occurs depending on the name of employee
+
+function onEdit(e) {
+  var sheet = e.source.getActiveSheet();
+  var range = e.range;
+  var targetColumn = range.getColumn();
+  var targetRow = range.getRow();
+  
+  // Only apply the code to the "Input" sheet
+  if (sheet.getName() === "Input") {
+      
+    // Code to execute when a cell is changed
+    if (targetColumn === 1 && targetRow >= 5) {
+      if (range.isBlank()) {
+        range.offset(0, 5).offset(0,0,1,2).clearContent();
+
+      } else if (range.getValue() === "[employee_name]") {
+        range.offset(0, 5).clearContent();
+        var validationRange = sheet.getRange("Schedule!$C$2:$C$3");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 5).setDataValidation(rule);
+
+        range.offset(0, 6).clearContent();
+        var validationRange = sheet.getRange("Schedule!$D$2:$D$3");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 6).setDataValidation(rule);
+
+      } else if (range.getValue() === "[employee_name]") {
+        range.offset(0, 5).clearContent();
+        var validationRange = sheet.getRange("Schedule!$C$4:$C$5");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 5).setDataValidation(rule);
+
+        range.offset(0, 6).clearContent();
+        var validationRange = sheet.getRange("Schedule!$D$4:$D$5");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 6).setDataValidation(rule);
+
+      } else if (range.getValue() === "[employee_name]") {
+        range.offset(0, 5).clearContent();
+        var validationRange = sheet.getRange("Schedule!$C$6:$C$7");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 5).setDataValidation(rule);
+
+        range.offset(0, 6).clearContent();
+        var validationRange = sheet.getRange("Schedule!$D$6:$D$7");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 6).setDataValidation(rule);
+
+      } else if (range.getValue() === "[employee_name]") {
+        range.offset(0, 5).clearContent();
+        var validationRange = sheet.getRange("Schedule!$C$8:$C$9");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 5).setDataValidation(rule);
+
+        range.offset(0, 6).clearContent();
+        var validationRange = sheet.getRange("Schedule!$D$8:$D$9");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 6).setDataValidation(rule);
+
+      } else if (range.getValue() === "[employee_name]") {
+        range.offset(0, 5).clearContent();
+        var validationRange = sheet.getRange("Schedule!$C$10:$C$11");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 5).setDataValidation(rule);
+
+        range.offset(0, 6).clearContent();
+        var validationRange = sheet.getRange("Schedule!$D$10:$D$11");
+        var rule = SpreadsheetApp.newDataValidation().requireValueInRange(validationRange).build();
+        range.offset(0, 6).setDataValidation(rule);
+
+      } 
+    } 
+  }
+}
