@@ -1,0 +1,141 @@
+Option Explicit
+
+Sub TransferToDatabase()
+    Dim inputSheet As Worksheet
+    Dim databaseSheet As Worksheet
+    Dim rowCount As Long
+    Dim lastRow As Long
+    Dim response As VbMsgBoxResult
+    
+    Set inputSheet = Workbooks("Payroll.xlsm").Sheets("Input")
+    Set databaseSheet = Workbooks("Payroll.xlsm").Sheets("Database")
+    
+    'Msgbox to confirm transfer
+    response = MsgBox("Proceed?", vbQuestion + vbYesNo, "Transfer Function")
+    
+    If response = vbYes Then
+    
+        'Unprotect sheet
+        Sheets("Database").Unprotect "[insert_password]"
+        
+        rowCount = inputSheet.Cells(Rows.Count, 1).End(xlUp).Row
+        
+        inputSheet.Range("A5").Select
+        Range(Selection, Selection.End(xlDown)).Select
+        Range(Selection, Selection.End(xlToRight)).Select
+        Selection.Copy
+        
+        'Go to Database Sheet and paste data
+        Sheets("Database").Select
+        
+        lastRow = databaseSheet.Cells(Rows.Count, 1).End(xlUp).Row + 1
+        
+        databaseSheet.Cells(lastRow, 1).Select
+        
+        'Paste copied selection to ActiveSheet = "Sales" sheet
+        ActiveCell.PasteSpecial Paste:=xlPasteValues
+        
+        'Protect sheet again
+        Sheets("Database").Protect "[insert_password]"
+        
+        Sheets("Input").Select
+        Application.CutCopyMode = False
+        
+        Else
+            Exit Sub
+    End If
+        
+End Sub
+
+
+Sub CalculateTotalHours()
+    Dim TotalHours As Long
+    Dim Remarks As String
+    Dim lastCommRow As Long
+    Dim inputSheet As Worksheet
+    Dim TimeInSchedule As Date
+    Dim TimeOutSchedule As Date
+    Dim TimeInActual As Date
+    Dim TimeOutActual As Date
+    Dim HoursLate As Double
+    Dim HoursUndertime As Double
+    Dim Late As Long
+    Dim HalfDay As Long
+    Dim Undertime As Long
+    Dim i As Long
+    
+    Set inputSheet = Workbooks("Payroll.xlsm").Sheets("Input")
+    
+    lastCommRow = inputSheet.Cells(inputSheet.Rows.Count, 1).End(xlUp).Row
+    
+    For i = 5 To lastCommRow
+    
+    Remarks = inputSheet.Cells(i, 5).Value
+    
+    TimeInSchedule = inputSheet.Cells(i, 6).Value
+    TimeOutSchedule = inputSheet.Cells(i, 7).Value
+    
+    TimeInActual = inputSheet.Cells(i, 8).Value
+    TimeOutActual = inputSheet.Cells(i, 9).Value
+    
+        If Remarks = "Stay In" Then
+            TotalHours = 8
+            
+        ElseIf Remarks = "Absent" Then
+            TotalHours = 0
+            
+        ElseIf Remarks = "Regular Schedule" Then
+            
+            Late = 0
+            HalfDay = 0
+            Undertime = 0
+            
+            HoursLate = CDbl((TimeInActual - TimeInSchedule) * 24)
+            
+            ' Check if employee is late
+            If HoursLate <= 0.25 Then
+                Late = 0
+                HalfDay = 0
+            
+            ElseIf HoursLate > 0.25 And HoursLate <= 1 Then
+                Late = 1
+                HalfDay = 0
+                
+            ElseIf HoursLate > 1 Then
+                Late = 0
+                HalfDay = 4
+                
+            End If
+            
+            HoursUndertime = CDbl((TimeOutSchedule - TimeOutActual) * 24)
+            
+            'Check if employee is undertime
+            If HoursUndertime > 0.08 And HoursUndertime < 4 Then
+                Undertime = CLng(Application.WorksheetFunction.Ceiling(HoursUndertime, 1))
+                
+            ElseIf HoursUndertime >= 4 Then
+                Undertime = CLng(Application.WorksheetFunction.Ceiling(HoursUndertime, 1)) - 1
+            
+            End If
+                
+            TotalHours = 8 - Late - HalfDay - Undertime
+        End If
+    
+        inputSheet.Cells(i, 10).Value = TotalHours
+    Next i
+    
+End Sub
+
+
+Sub FillGaps()
+    Dim lastRow As Long
+    
+    lastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    
+    'Sheets("Input").Unprotect "[insert_password]"
+    
+    Range("A5").Resize(lastRow - 4, 10).Replace What:="", Replacement:="N/A"
+    
+    'Sheets("Input").Protect "[insert_password]"
+
+End Sub
