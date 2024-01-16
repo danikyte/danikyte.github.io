@@ -1,0 +1,34 @@
+import azure.functions as func
+import logging
+import datetime
+
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+@app.route(route="[placeholder]")
+def [placeholder](req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    [placeholder] = req.params.get('[placeholder]')
+
+    if [placeholder]:
+        try: 
+            [placeholder] = datetime.datetime.strptime([placeholder], '%Y-%m-%d').date()
+            current_date = datetime.datetime.now().date()
+
+            if current_date < [placeholder]:
+                return func.HttpResponse(status_code=200) # Valid Access
+            else:
+                return func.HttpResponse(
+                    status_code=403,
+                    body="You do not have a valid access."
+                ) # Invalid access
+        except ValueError:
+            return func.HttpResponse(
+                status_code=400,
+                body="Invalid format."
+            )
+    else:
+        return func.HttpResponse(
+            status_code=400,
+            body="Missing access validity parameter."
+        )
