@@ -1,0 +1,700 @@
+from tkinter import messagebox
+import customtkinter as ctk
+from oauth2client.service_account import ServiceAccountCredentials
+from gspread import authorize
+from datetime import datetime
+
+# Set the appearance and color theme
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("dark-blue")
+
+def main():
+    root = ctk.CTk()
+    app = App(root)
+    root.mainloop()
+
+class App():
+    def __init__(self, root):
+        self.root = root
+
+        # Set Window Title
+        self.root.title("Mykyo v.1.0")
+
+        # Set Geometry
+        self.root.geometry("700x400")
+
+        # Create a Frame for the sidebar
+        self.sidebar_frame = ctk.CTkFrame(self.root, width=180)
+        self.sidebar_frame.pack(side="left", fill="y")
+
+        # Create a Frame to display the selected UI
+        self.ui_frame = ctk.CTkFrame(self.root)
+        self.ui_frame.pack(side="left", fill="both", expand=True)
+
+        self.current_ui_gui = SummaryGUI(self.ui_frame)
+
+        self.ui_buttons = []
+        # Create buttons for ui selection in the sidebar
+        summary_btn = ctk.CTkButton(self.sidebar_frame, text="Summary", font=('Roboto', 12), corner_radius=0, fg_color="#E75480", text_color="black", hover_color="#B84D5F", height=40, command=self.show_summary)
+        summary_btn.pack(fill="x", pady=0)
+        self.ui_buttons.append(summary_btn)
+
+        sales_btn = ctk.CTkButton(self.sidebar_frame, text="Sales", font=('Roboto', 12), corner_radius=0, fg_color="#E75480", text_color="black", hover_color="#B84D5F", height=40, command=self.show_sales)
+        sales_btn.pack(fill="x", pady=0)
+        self.ui_buttons.append(sales_btn)
+
+        expenses_btn = ctk.CTkButton(self.sidebar_frame, text="Expenses", font=('Roboto', 12), corner_radius=0, fg_color="#E75480", text_color="black", hover_color="#B84D5F", height=40, command=self.show_expenses)
+        expenses_btn.pack(fill="x", pady=0)
+        self.ui_buttons.append(expenses_btn)
+
+        self.root.mainloop()
+
+    def show_summary(self):
+        self.show_ui('summary')
+
+    def show_sales(self):
+        self.show_ui('sales')
+
+    def show_expenses(self):
+        self.show_ui('expenses')
+
+    def show_ui(self, ui):
+        # Destroy the current UI if exists
+        if self.current_ui_gui:
+            self.current_ui_gui.destroy()
+
+        # Dynamically load the UI for the selected UI
+        if ui == "summary":
+            self.current_ui_gui = SummaryGUI(self.ui_frame)
+        elif ui == "sales":
+            self.current_ui_gui = SalesGUI(self.ui_frame)
+        elif ui == "expenses":
+            self.current_ui_gui = ExpensesGUI(self.ui_frame)
+
+        # Pack the current UI frame
+        self.current_ui_gui.pack(fill="both", expand=True)
+
+
+class SummaryGUI(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        total_sales = 0
+        total_discounts = 0
+        total_net = 0
+        total_commission = 0
+        total_expenses = 0
+        
+        # Set message labels
+        self.info_label = ctk.CTkLabel(self, text="Summary Report", font=('Roboto', 16, "bold"), anchor='w', justify='left', height=30, width=300)
+
+        self.date_label = ctk.CTkLabel(self, text="Date (MM/DD/YYYY):", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+
+        self.total_sales_label = ctk.CTkLabel(self, text="Total Sales:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_discounts_label = ctk.CTkLabel(self, text="Total Discounts:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_net_label = ctk.CTkLabel(self, text="Total Net:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_commission_label = ctk.CTkLabel(self, text="Total Commission:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_expenses_label = ctk.CTkLabel(self, text="Total Expenses:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+
+        self.total_sales_value = ctk.CTkLabel(self, text=f"{total_sales}", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_discounts_value = ctk.CTkLabel(self, text=f"{total_discounts}", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_net_value = ctk.CTkLabel(self, text=f"{total_net}", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_commission_value = ctk.CTkLabel(self, text=f"{total_commission}", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.total_expenses_value = ctk.CTkLabel(self, text=f"{total_expenses}", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+
+        # Set entry boxes
+        self.date_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=100, corner_radius=0)
+
+        # Set buttons
+        self.generate_report_btn = ctk.CTkButton(self, text="Generate Summary", font=('Roboto', 12), height=25, width=150, fg_color="#E75480", hover_color="#B84D5F", command=self.generate_summary)
+
+        self.info_label.place(x=40, y=10)
+        
+        self.date_label.place(x=40, y=60)
+        self.date_entry.place(x=170, y=60)
+        self.generate_report_btn.place(x=300, y=60)
+        
+        self.total_sales_label.place(x=40, y=110)
+        self.total_discounts_label.place(x=40, y=150)
+        self.total_net_label.place(x=40, y=190)
+        self.total_commission_label.place(x=40, y=230)
+        self.total_expenses_label.place(x=40, y=270)
+
+        self.total_sales_value.place(x=170, y=110)
+        self.total_discounts_value.place(x=170, y=150)
+        self.total_net_value.place(x=170, y=190)
+        self.total_commission_value.place(x=170, y=230)
+        self.total_expenses_value.place(x=170, y=270)
+
+    def generate_summary(self):
+        selected_date_str = self.date_entry.get()
+
+        try:
+            selected_date = datetime.strptime(selected_date_str, "%m/%d/%Y")
+        except Exception as e:
+            messagebox.showerror("Error", "Please enter a valid date (MM/DD/YYYY) format.")
+            return
+
+        # Get sales and expenses data from google sheets
+        google_sheets_sales_data = self.get_google_sheets_sales_data()
+        google_sheets_expenses_data = self.get_google_sheets_expenses_data()
+
+        # Set variables to 0
+        total_sales = 0
+        total_discounts = 0
+        total_net = 0
+        total_commission = 0
+        total_expenses = 0
+
+        # FOR SALES DATA:
+        # Iterate through google sheets sales data and calculate totals based on selected date
+        for row in google_sheets_sales_data[1:]:
+            date_column_sales_data_str = row[0]
+
+            try:
+                date_column_sales_data = datetime.strptime(date_column_sales_data_str, "%m/%d/%Y")
+            except ValueError:
+                continue
+
+            if date_column_sales_data.date() == selected_date.date():
+                # Clean the string by removing non-numeric characters
+                sales_str = ''
+                for char in row[7]:
+                    if char.isdigit() or char == '.':
+                        sales_str += char
+
+                discounts_str = ''
+                for char in row[8]:
+                    if char.isdigit() or char == '.':
+                        discounts_str += char
+
+                net_str = ''
+                for char in row[9]:
+                    if char.isdigit() or char == '.':
+                        net_str += char
+
+                commission_str = ''
+                for char in row[11]:
+                    if char.isdigit() or char == '.':
+                        commission_str += char
+
+                total_sales += float(sales_str)
+                total_discounts += float(discounts_str)
+                total_net += float(net_str)
+                total_commission += float(commission_str)
+
+        # FOR EXPENSES DATA:
+        # Iterate through google sheets expenses data and calculate totals based on selected date
+        for row in google_sheets_expenses_data[1:]:
+            date_column_expenses_data_str = row[0]
+
+            try:
+                date_column_expenses_data = datetime.strptime(date_column_expenses_data_str, "%m/%d/%Y")
+            except ValueError:
+                continue
+
+            if date_column_expenses_data.date() == selected_date.date():
+                # Clean the string by removing non-numeric characters
+                expenses_str = ''
+                for char in row[3]:
+                    if char.isdigit() or char == '.':
+                        expenses_str += char
+                
+                total_expenses += float(expenses_str)
+
+        self.total_sales_value.configure(text=f"{total_sales}")
+        self.total_discounts_value.configure(text=f"{total_discounts}")
+        self.total_net_value.configure(text=f"{total_net}")
+        self.total_commission_value.configure(text=f"{total_commission}")
+        self.total_expenses_value.configure(text=f"{total_expenses}")
+
+    def get_google_sheets_sales_data(self):
+        # Set up Google Sheets API credentials
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+        credentials = {
+        "type": "[placeholder]",
+        "project_id": "[placeholder]",
+        "private_key_id": "[placeholder]",
+        "private_key": "[placeholder]",
+        "client_email": "[placeholder]",
+        "client_id": "[placeholder]",
+        "auth_uri": "[placeholder]",
+        "token_uri": "[placeholder]",
+        "auth_provider_x509_cert_url": "[placeholder]",
+        "client_x509_cert_url": "[placeholder]",
+        "universe_domain": "[placeholder]"
+        }
+
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials, scope)
+        client = authorize(creds)
+
+        # Specify the folder ID
+        folder_id = '[placeholder]'
+
+        # Open the google sheets document by title
+        gspreadsheet = client.open('Sales_Database', folder_id)
+
+        # Select a specific worksheet by title
+        gworksheet = gspreadsheet.worksheet('Sales')
+
+        # Read data from a specific range (assuming data starts from A1)
+        data = gworksheet.get_all_values()
+
+        return data
+    
+    def get_google_sheets_expenses_data(self):
+        # Set up Google Sheets API credentials
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+        credentials = {
+        "type": "[placeholder]",
+        "project_id": "[placeholder]",
+        "private_key_id": "[placeholder]",
+        "private_key": "[placeholder]",
+        "client_email": "[placeholder]",
+        "client_id": "[placeholder]",
+        "auth_uri": "[placeholder]",
+        "token_uri": "[placeholder]",
+        "auth_provider_x509_cert_url": "[placeholder]",
+        "client_x509_cert_url": "[placeholder]",
+        "universe_domain": "[placeholder]"
+        }
+
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials, scope)
+        client = authorize(creds)
+
+        # Specify the folder ID
+        folder_id = '[placeholder]'
+
+        # Open the google sheets document by title
+        gspreadsheet = client.open('Sales_Database', folder_id)
+
+        # Select a specific worksheet by title
+        gworksheet = gspreadsheet.worksheet('Expenses')
+
+        # Read data from a specific range (assuming data starts from A1)
+        data = gworksheet.get_all_values()
+
+        return data
+
+class SalesGUI(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+        # Set message label
+        self.info_label = ctk.CTkLabel(self, text="Mykyo Sales Entry Sheet", font=('Roboto', 16, "bold"), anchor='w', justify='left', height=30, width=300)
+        
+        self.date_label = ctk.CTkLabel(self, text="* Date (MM/DD/YYYY):", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.customer_name_label = ctk.CTkLabel(self, text="Customer Name:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.contact_number_label = ctk.CTkLabel(self, text="Contact #:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.city_label = ctk.CTkLabel(self, text="City:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.category_label = ctk.CTkLabel(self, text="Service Category:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.services_label = ctk.CTkLabel(self, text="Services:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.price_label = ctk.CTkLabel(self, text="* Basic Price:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.discount_label = ctk.CTkLabel(self, text="* Discount:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.net_label = ctk.CTkLabel(self, text="* Net:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.staff_label = ctk.CTkLabel(self, text="Staff:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.commission_label = ctk.CTkLabel(self, text="Commission:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+
+        # Set entry boxes
+        self.date_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.customer_name_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.contact_number_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.city_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        
+        self.price_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.discount_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.net_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.staff_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.commission_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+
+        # Set Option Menu for Category and Services
+        self.category_option = ctk.CTkOptionMenu(self, width=200, height=30, corner_radius=0, fg_color="#E75480", button_color="#E75480", button_hover_color="#B84D5F", command=self.services_list , values=["N/A",
+                                                                                                                                                                                                             "Nail Services", 
+                                                                                                                                                                                                             "Hand Care",
+                                                                                                                                                                                                             "Foot Care",
+                                                                                                                                                                                                             "Threading",
+                                                                                                                                                                                                             "Waxing",
+                                                                                                                                                                                                             "Eyelash",
+                                                                                                                                                                                                             "Massage",
+                                                                                                                                                                                                             "IV Drip",
+                                                                                                                                                                                                             "IV Drip Package",
+                                                                                                                                                                                                             "Boosters",
+                                                                                                                                                                                                             "RF",
+                                                                                                                                                                                                             "80K Cavitation",
+                                                                                                                                                                                                             "Facial Treatment",
+                                                                                                                                                                                                             "Mesolipo",
+                                                                                                                                                                                                             "Unlimited Wart Removal",
+                                                                                                                                                                                                             "Others"])
+        
+        self.services_option = ctk.CTkOptionMenu(self, width=200, height=30, corner_radius=0, fg_color="#E75480", button_color="#E75480", button_hover_color="#B84D5F", values=["N/A"])
+
+        # Set buttons
+        self.send_btn = ctk.CTkButton(self, text="Send", font=('Roboto', 12), height=30, width=100, fg_color="#E75480", hover_color="#B84D5F", command=self.check_input)
+        self.clear_btn = ctk.CTkButton(self, text="Clear", font=('Roboto', 12), height=30, width=100, fg_color="#E75480", hover_color="#B84D5F", command=self.clear_input)
+
+        # Place objects
+        self.info_label.place(x=40, y=10)
+        self.date_label.place(x=40, y=50)
+        self.customer_name_label.place(x=40, y=80)
+        self.contact_number_label.place(x=40, y=110)
+        self.city_label.place(x=40, y=140)
+        self.category_label.place(x=40, y=170)
+        self.services_label.place(x=40, y=200)
+        self.price_label.place(x=40, y=230)
+        self.discount_label.place(x=40, y=260)
+        self.net_label.place(x=40, y=290)
+        self.staff_label.place(x=40, y=320)
+        self.commission_label.place(x=40, y=350)
+
+        self.date_entry.place(x=170, y=50)
+        self.customer_name_entry.place(x=170, y=80)
+        self.contact_number_entry.place(x=170, y=110)
+        self.city_entry.place(x=170, y=140)
+        self.category_option.place(x=170, y=170)
+
+        self.price_entry.place(x=170, y=230)
+        self.discount_entry.place(x=170, y=260)
+        self.net_entry.place(x=170, y=290)
+        self.staff_entry.place(x=170, y=320)
+        self.commission_entry.place(x=170, y=350)
+
+        self.send_btn.place(x=400, y=50)
+        self.clear_btn.place(x=400, y=90)
+
+    def services_list(self, selected_category):
+        selected_category = self.category_option.get()
+
+        # Set options based on the selected category
+        if selected_category == "Nail Services":
+            services = [[placeholder]]
+        elif selected_category == "Hand Care":
+            services = [[placeholder]]
+        elif selected_category == "Foot Care":
+            services = [[placeholder]]
+        elif selected_category == "Threading":
+            services = [[placeholder]]
+        elif selected_category == "Waxing":
+            services = [[placeholder]]
+        elif selected_category == "Eyelash":
+            services = [[placeholder]]
+        elif selected_category == "Massage":
+            services = [[placeholder]]
+        elif selected_category == "IV Drip":
+            services = [[placeholder]]
+        elif selected_category == "IV Drip Package":
+            services = [[placeholder]]
+        elif selected_category == "Boosters":
+            services = [[placeholder]]
+        elif selected_category == "RF":
+            services = [[placeholder]]
+        elif selected_category == "80K Cavitation":
+            services = [[placeholder]]
+        elif selected_category == "Facial Treatment":
+            services = [[placeholder]]
+        elif selected_category == "Mesolipo":
+            services = [[placeholder]]
+        elif selected_category == "Unlimited Wart Removal":
+            services = [[placeholder]]
+        elif selected_category == "Others":
+            services = [[placeholder]]
+
+         # Set the updated options for services_option
+        self.services_option = ctk.CTkOptionMenu(self, width=200, height=30, corner_radius=0, fg_color="#E75480", button_color="#E75480", button_hover_color="#B84D5F", values=services)
+
+        self.services_option.place(x=170, y=200)
+
+    def clear_input(self):
+        self.date_entry.delete(0, ctk.END)
+        self.customer_name_entry.delete(0, ctk.END)
+        self.contact_number_entry.delete(0, ctk.END)
+        self.city_entry.delete(0, ctk.END)
+        self.price_entry.delete(0, ctk.END)
+        self.discount_entry.delete(0, ctk.END)
+        self.net_entry.delete(0, ctk.END)
+        self.staff_entry.delete(0, ctk.END)
+        self.commission_entry.delete(0, ctk.END)
+
+    def check_input(self):
+        date_str = self.date_entry.get()
+        customer_name = self.customer_name_entry.get()
+        contact_number = int(self.contact_number_entry.get())
+        city = self.city_entry.get()
+        category = self.category_option.get()
+        service = self.services_option.get()
+        price = float(self.price_entry.get())
+        discount = float(self.discount_entry.get())
+        net = float(self.net_entry.get())
+        staff = self.staff_entry.get()
+        commission = float(self.commission_entry.get())
+
+        no_blank_flag = False
+        # Check if entry boxes are empty
+        if date_str != "" and price != "" and discount != "" and net != "":
+            no_blank_flag = True
+        else:
+            messagebox.showerror("Error", "Please fill up all required fields.")
+            return
+
+        # Format string to date format
+        date_1 = datetime.strptime(date_str, "%m/%d/%Y")
+
+        month = date_1.month
+
+        if month == 1:
+            month = 'January'
+        elif month == 2:
+            month = 'February'
+        elif month == 3:
+            month = 'March'
+        elif month == 4:
+            month = 'April'
+        elif month == 5:
+            month = 'May'
+        elif month == 6:
+            month = 'June'
+        elif month == 7:
+            month = 'July'
+        elif month == 8:
+            month = 'August'
+        elif month == 9:
+            month = 'September'
+        elif month == 10:
+            month = 'October'
+        elif month == 11:
+            month = 'November'
+        elif month == 12:
+            month = 'December'
+
+        date = datetime.strftime(date_1, "%m/%d/%Y")
+
+        contact_number_flag = False
+        if contact_number:
+            # Check if contact number is text or integer
+            if isinstance(contact_number, int) and len(str(contact_number)) == 10:
+                contact_number_flag = True
+            else:
+                messagebox.showerror("Error", "Please make sure that contact number is in the correct format.")
+                return
+        else:
+            contact_number_flag = True
+
+        if no_blank_flag and contact_number_flag:
+            try:
+                self.send_data(date, month, customer_name, contact_number, city, category, service, price, discount, net, staff, commission)
+                messagebox.showinfo("Success!", "Data Saved.")
+            except Exception as e:
+                messagebox.showerror("Error", f"An error has occurred: {e}")
+        else:
+            messagebox.showerror("Error", "Please make sure to fill all required fields and in correct format.")
+
+    def send_data(self, date, month, customer_name, contact_number, city, category, service, price, discount, net, staff, commission):
+        # Set up Google Sheets API credentials
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+        credentials = {
+        "type": "[placeholder]",
+        "project_id": "[placeholder]",
+        "private_key_id": "[placeholder]",
+        "private_key": "[placeholder]",
+        "client_email": "[placeholder]",
+        "client_id": "[placeholder]",
+        "auth_uri": "[placeholder]",
+        "token_uri": "[placeholder]",
+        "auth_provider_x509_cert_url": "[placeholder]",
+        "client_x509_cert_url": "[placeholder]",
+        "universe_domain": "[placeholder]"
+        }
+
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials, scope)
+        client = authorize(creds)
+
+        # Specify the folder ID
+        folder_id = '[placeholder]'
+
+        # Open the google sheets document by title
+        gspreadsheet = client.open('Sales_Database', folder_id)
+
+        # Select a specific worksheet by title
+        gworksheet = gspreadsheet.worksheet('Sales')
+
+        # Add one row
+        gworksheet.add_rows(1)
+
+        # Get the last row = total row count
+        last_row = gworksheet.row_count
+            
+        # Set available row to the last row
+        available_row = last_row
+
+        # Set the data to be placed in the row
+        data = [
+            {'range':f'A{available_row}:L{available_row}',
+            'values':[[date, month, customer_name, contact_number, city, category, service, price, discount, net, staff, commission]]}
+        ]
+
+        gworksheet.batch_update(data)
+
+###############################################################################################################################################
+    
+class ExpensesGUI(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+         # Set message label
+        self.info_label = ctk.CTkLabel(self, text="Mykyo Expenses Entry Sheet", font=('Roboto', 16, "bold"), anchor='w', justify='left', height=30, width=300)
+        
+        self.date_label = ctk.CTkLabel(self, text="* Date (MM/DD/YYYY):", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.category_label = ctk.CTkLabel(self, text="* Category:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.amount_label = ctk.CTkLabel(self, text="* Amount:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+        self.remarks_label = ctk.CTkLabel(self, text="Remarks:", font=('Roboto', 12), anchor='w', justify='left', height=30, width=100)
+
+        # Set entry boxes
+        self.date_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.amount_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+        self.remarks_entry = ctk.CTkEntry(self, font=('Roboto', 12), height=30, width=200, corner_radius=0)
+
+        # Set Option Menu for Category and Services
+        self.category_option = ctk.CTkOptionMenu(self, width=200, height=30, corner_radius=0, fg_color="#E75480", button_color="#E75480", button_hover_color="#B84D5F", values=["N/A",
+                                                                                                                                                                                "Salary", 
+                                                                                                                                                                                "Rent",
+                                                                                                                                                                                "Electricity",
+                                                                                                                                                                                "Water",
+                                                                                                                                                                                "Internet",
+                                                                                                                                                                                "Marketing",
+                                                                                                                                                                                "Repairs",
+                                                                                                                                                                                "Laundry",
+                                                                                                                                                                                "Inventory",
+                                                                                                                                                                                "Compliance",
+                                                                                                                                                                                "Miscellaneous"])
+
+        # Set buttons
+        self.send_btn = ctk.CTkButton(self, text="Send", font=('Roboto', 12), height=30, width=100, fg_color="#E75480", hover_color="#B84D5F", command=self.check_input)
+        self.clear_btn = ctk.CTkButton(self, text="Clear", font=('Roboto', 12), height=30, width=100, fg_color="#E75480", hover_color="#B84D5F", command=self.clear_input)
+
+        # Place objects
+        self.info_label.place(x=40, y=10)
+        self.date_label.place(x=40, y=60)
+        self.category_label.place(x=40, y=100)
+        self.amount_label.place(x=40, y=140)
+        self.remarks_label.place(x=40, y=180)
+
+        self.date_entry.place(x=170, y=60)
+        self.category_option.place(x=170, y=100)
+        self.amount_entry.place(x=170, y=140)
+        self.remarks_entry.place(x=170, y=180)
+
+        self.send_btn.place(x=400, y=60)
+        self.clear_btn.place(x=400, y=100)
+
+    def clear_input(self):
+        self.date_entry.delete(0, ctk.END)
+        self.amount_entry.delete(0, ctk.END)
+        self.remarks_entry.delete(0, ctk.END)
+
+    def check_input(self):
+        date_str = self.date_entry.get()
+        category = self.category_option.get()
+        amount = float(self.amount_entry.get())
+        remarks = self.remarks_entry.get()
+
+        # Check for empty entry boxes
+        no_blank_flag = False
+        if date_str != "" and category != "N/A" and amount != "":
+            no_blank_flag = True
+        else:
+            messagebox.showerror("Error", "Please make sure to fill up required fields.")
+            return
+        
+        # Format date to desired format
+        date_1 = datetime.strptime(date_str, "%m/%d/%Y")
+
+        # Get month
+        month = date_1.month
+
+        if month == 1:
+            month = 'January'
+        elif month == 2:
+            month = 'February'
+        elif month == 3:
+            month = 'March'
+        elif month == 4:
+            month = 'April'
+        elif month == 5:
+            month = 'May'
+        elif month == 6:
+            month = 'June'
+        elif month == 7:
+            month = 'July'
+        elif month == 8:
+            month = 'August'
+        elif month == 9:
+            month = 'September'
+        elif month == 10:
+            month = 'October'
+        elif month == 11:
+            month = 'November'
+        elif month == 12:
+            month = 'December'
+
+        date = datetime.strftime(date_1, "%m/%d/%Y")
+
+        if no_blank_flag:
+            try:
+                self.send_data(date, month, category, amount, remarks)
+            except Exception as e:
+                messagebox.showerror("Error", f"An error has occurred: {e}")
+        else:
+            messagebox.showerror("Error", "Please make sure to fill all required fields and in correct format.")
+
+
+    def send_data(self, date, month, category, amount, remarks):
+        # Set up Google Sheets API credentials
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+        credentials = {
+        "type": "[placeholder]",
+        "project_id": "[placeholder]",
+        "private_key_id": "[placeholder]",
+        "private_key": "[placeholder]",
+        "client_email": "[placeholder]",
+        "client_id": "[placeholder]",
+        "auth_uri": "[placeholder]",
+        "token_uri": "[placeholder]",
+        "auth_provider_x509_cert_url": "[placeholder]",
+        "client_x509_cert_url": "[placeholder]",
+        "universe_domain": "[placeholder]"
+        }
+
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials, scope)
+        client = authorize(creds)
+
+        # Specify the folder ID
+        folder_id = '[folder_id placeholder]'
+
+        # Open the google sheets document by title
+        gspreadsheet = client.open('Sales_Database', folder_id)
+
+        # Select a specific worksheet by title
+        gworksheet = gspreadsheet.worksheet('Expenses')
+
+        # Add one row
+        gworksheet.add_rows(1)
+
+        # Get the last row = total row count
+        last_row = gworksheet.row_count
+            
+        # Set available row to the last row
+        available_row = last_row
+
+        # Set the data to be placed in the row
+        data = [
+            {'range':f'A{available_row}:E{available_row}',
+            'values':[[date, month, category, amount, remarks]]}
+        ]
+
+        gworksheet.batch_update(data)
+
+if __name__ == "__main__":
+    main()
