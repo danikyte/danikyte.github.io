@@ -1,6 +1,7 @@
 # Use this to send bulk emails by creating your email in Gmail, save it on your drafts folder, then have the code pick it up and programmatically send
 # message_processing is used to replace placeholders to personalize the email content
 # The functions are part of a class
+# Code is part of desktop application for www.barkdigitalmarketing.com
 
 def message_processing(self, clone_raw_email, var1, var2, var3, var4):
     message = clone_raw_email.replace(b"{var1}", str(var1).encode())
