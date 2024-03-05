@@ -1,4 +1,6 @@
 # Use this to process payments through Paymongo Links
+# See paymongo documentation for more information
+# Code is part of desktop application for www.barkdigitalmarketing.com
 
 def on_close(self):
     self.keep_waiting = False
