@@ -1,0 +1,89 @@
+# Use this to process payment through PayPal
+
+def on_close(self):
+        self.keep_waiting = False
+        self.root.destroy()
+
+def initiate_paypal_payment(self):
+        try:
+            paypalrestsdk.configure({
+            "mode":"live",
+            "client_id": client_id,
+            "client_secret": client_secret
+            })
+    
+            # Create a payment request
+            payment = paypalrestsdk.Payment({
+                "intent": "sale",
+                "payer": {
+                    "payment_method": "paypal"
+                },
+                "redirect_urls": {
+                    "return_url": "[placeholder]",
+                    "cancel_url": "[placeholder]"
+                },
+                "transactions": [{
+                    "amount": {
+                        "total": str(amount),
+                        "currency": "PHP"
+                    },
+                    "description": description
+                }]
+            })
+    
+            # Create the payment on PayPal
+            if payment.create():
+                for link in payment.links:
+                    if link.rel == "approval_url":
+                      # Open the approval URL in a new window
+                      webbrowser.open(link.href)
+            self.wait_for_payment_completion(payment.id)
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+
+    def wait_for_payment_completion(self, payment_id):
+        try:
+            # Poll PayPal for payment status updates
+            timeout_seconds = 900 
+            start_time = time.time()
+
+            while time.time() - start_time < timeout_seconds and self.keep_waiting:
+                payment = Payment.find(payment_id)
+
+                if payment.state == "created":
+                    payer = payment.payer
+
+                    if payer:
+                        payer_info = payer.payer_info
+
+                        if payer_info:
+                            payer_id = payer_info.payer_id
+
+                            if payer_id:
+                                try:
+                                    # Execute the payment using the payment ID and payer ID
+                                    payment.execute({"payer_id": payer_id})
+
+                                    # Insert what to do once the payment has been confirmed
+                                    
+                                    self.on_close() # Close the payment window
+                                    return
+                                except Exception as e:
+                                    messagebox.showerror("Error", f"An unexpected error occurred.")
+                elif payment.state == "failed":
+                    messagebox.showerror("Error", "Payment process failed.")
+
+                    self.on_close() # Close the payment window
+                    return
+
+                sleep(3) # Check every 3 seconds
+
+            if not self.keep_waiting:
+                messagebox.showerror("Payment Cancelled", "Payment process has been cancelled.")
+            else:
+                messagebox.showerror("Timeout", "Payment timeout exceeded.")
+                self.on_close() # Close the payment window
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred during payment verification.")
+            self.on_close()  # Close the payment window
