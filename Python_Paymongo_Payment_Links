@@ -1,0 +1,82 @@
+# Use this to process payments through Paymongo Links
+
+def on_close(self):
+    self.keep_waiting = False
+    self.root.destroy()
+
+def initiate_paymongo_payment(self):
+    # Paymongo API create links
+    url = "https://api.paymongo.com/v1/links"
+
+    # Add two zeroes at the end of the amount value in string then convert to integer
+    amount = int(str(self.amount) + '00')
+
+    # Set up payload
+    payload = { 
+        "data": { 
+            "attributes": {
+                "amount": amount,
+                "description": self.paymongo_description
+            }
+        }
+    }
+
+    # Set up headers
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "authorization": "[placeholder]"
+    }
+
+    # Post request to create paymongo links
+    response = post(url, json=payload, headers=headers)
+
+    # Get the response
+    data = response.json()
+
+    payment_id = data['data']['id']
+    payment_checkout_url = data['data']['attributes']['checkout_url']
+
+    # Open the checkout url in default web browser
+    webbrowser.open(payment_checkout_url)
+    self.wait_for_payment_completion(payment_id)
+
+def wait_for_payment_completion(self, payment_id):
+    try:
+        # Poll Paymongo for payment status updates
+        timeout_seconds = 3600 # 1 hour timeout
+        start_time = time.time()
+
+        while time.time() - start_time < timeout_seconds and self.keep_waiting:
+            url = f"https://api.paymongo.com/v1/links/{payment_id}"
+            headers = {
+                "accept": "application/json",
+                "authorization": "[placeholder]"
+            }
+
+            response = get(url, headers=headers)
+
+            # Get the response
+            data = response.json()
+            payment_status = data['data']['attributes']['status']
+
+            if payment_status == 'paid':
+                try:
+                    # Insert here what to do when the payment_status is confirmed to be 'paid'
+                    self.on_close() # Close the payment window
+                    return
+                except Exception as e:
+                    messagebox.showerror("Error", f"An unexpected error occurred.")
+            elif payment_status == 'unpaid':
+                pass
+            
+            sleep(10) # Check every 10 seconds
+
+        if not self.keep_waiting:
+            messagebox.showerror("Payment Cancelled", "Payment process has been cancelled.")
+        else:
+            messagebox.showerror("Timeout", "Payment timeout exceeded.")
+            self.on_close() # Close the payment window
+    except Exception as e:
+        messagebox.showerror("Error", "An unexpected error occurred during payment verification.")
+        self.on_close() # Close the payment window
