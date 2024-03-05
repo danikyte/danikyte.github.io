@@ -1,0 +1,381 @@
+# Use this user form to streamline encoding of data
+# This includes renameable labels beside entry boxes
+# Text file is encrypted to prevent unnecessary changes
+# Uses instance of global_settings to store values of variables
+# This is developed to cater to Woofer Autoplay, so that the excel file does not need to be opened
+
+import customtkinter as ctk
+from tkinter import messagebox, filedialog
+import os
+import openpyxl
+import json
+from cryptography.fernet import Fernet
+from datetime import datetime
+import re
+
+ctk.set_appearance_mode("Dark")
+
+class GlobalSettings():
+    def __init__(self):
+        self.file_path = None
+
+        self.text1 = None
+        self.text2 = None
+        self.text3 = None
+        self.text4 = None
+    
+    def update_file_path(self, new_value):
+        self.file_path = new_value
+
+    def update_text1(self, new_value):
+        self.text1 = new_value
+
+    def update_text2(self, new_value):
+        self.text2 = new_value
+
+    def update_text3(self, new_value):
+        self.text3 = new_value
+
+    def update_text4(self, new_value):
+        self.text4 = new_value
+
+# Create an instance of global settings
+global_settings = GlobalSettings()
+
+# Set up encryption key
+key = b'[placeholder]'
+cipher_suite = Fernet(key)
+
+def encrypt_credentials(data):
+    # Convert the data to JSON string
+    data_json = json.dumps(data)
+    # Encrypt the data_json
+    encrypted_data_json = cipher_suite.encrypt(data_json.encode())
+    return encrypted_data_json
+
+def decrypt_credentials(encrypted_data):
+    decrypted_data = cipher_suite.decrypt(encrypted_data)
+    return decrypted_data.decode()
+
+def get_global_settings():
+    try:
+        with open('data.txt', 'rb') as file:
+            encrypted_data = file.read()
+        decrypted_data = decrypt_credentials(encrypted_data)
+        data = json.loads(decrypted_data)
+    except FileNotFoundError:
+        # If file is not found, then create a default txt file
+        data = {
+            'file_path':'None',
+            'text1':'Column1:',
+            'text2':'Column2:',
+            'text3':'Column3:',
+            'text4':'Column4:'
+        }
+
+        # Encrypt data
+        encrypted_data = encrypt_credentials(data)
+
+        with open('data.txt', 'wb') as file:
+            file.write(encrypted_data)
+
+    global_settings.update_file_path(data['file_path'])
+    global_settings.update_text1(data['text1'])
+    global_settings.update_text2(data['text2'])
+    global_settings.update_text3(data['text3'])
+    global_settings.update_text4(data['text4'])
+
+def main():
+    # Get the data and assign to global settings
+    get_global_settings()
+
+    root = ctk.CTk()
+    UserFormGUI(root)
+    root.mainloop()
+
+
+class UserFormGUI():
+    def __init__(self, root):
+        self.root = root
+
+        self.file_path = global_settings.file_path
+        self.text1 = global_settings.text1
+        self.text2 = global_settings.text2
+        self.text3 = global_settings.text3
+        self.text4 = global_settings.text4
+
+        # Set Window Title
+        self.root.title("User Form Application")
+
+        # Set Geometry
+        self.root.geometry("680x600")
+
+        # Set Window Icon
+        folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+        ico_path = os.path.join(folder_path, 'image.ico')
+        self.root.iconbitmap(ico_path)
+
+        # Set Window resizability to False
+        self.root.resizable(False, False)
+
+        # Welcome Section
+        self.welcome_label = ctk.CTkLabel(self.root, text="User Form Encoder", font=('Roboto', 16, 'bold'), height=40, width=200)
+        self.welcome_label.place(x=30, y=20)
+
+        self.column_number_label = ctk.CTkLabel(self.root, text="Column Number:", font=('Roboto', 12), height=40, width=100)
+        self.column_number_label.place(x=490, y=80)
+
+        
+        self.column_labels(self.text1, self.text2, self.text3, self.text4)
+
+        # Column Entry Boxes
+        self.entry1_entry = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=250)
+        self.entry2_entry = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=250)
+        self.entry3_entry = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=250)
+        self.entry4_entry = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=250)
+        self.entry5_entry = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=250, placeholder_text="Ex. 29-Jan-2030")
+        self.entry6_entry = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=250, placeholder_text="Ex. 08:00 AM")
+
+        # Place Column Entry Boxes
+        self.entry1_entry.place(x=220, y=125)
+        self.entry2_entry.place(x=220, y=175)
+        self.entry3_entry.place(x=220, y=225)
+        self.entry4_entry.place(x=220, y=275)
+        self.entry5_entry.place(x=220, y=325)
+        self.entry6_entry.place(x=220, y=375)
+
+        # Column Number OptionMenu
+        options = ["1", "2", "3", "4", "5", "6"]
+        self.entry1_option = ctk.CTkOptionMenu(self.root, font=('Roboto', 12), values=options, corner_radius=0, width=80)
+        self.entry1_option.set("1")
+        self.entry2_option = ctk.CTkOptionMenu(self.root, font=('Roboto', 12), values=options, corner_radius=0, width=80)
+        self.entry2_option.set("2")
+        self.entry3_option = ctk.CTkOptionMenu(self.root, font=('Roboto', 12), values=options, corner_radius=0, width=80)
+        self.entry3_option.set("3")
+        self.entry4_option = ctk.CTkOptionMenu(self.root, font=('Roboto', 12), values=options, corner_radius=0, width=80)
+        self.entry4_option.set("4")
+        self.entry5_option = ctk.CTkOptionMenu(self.root, font=('Roboto', 12), values=options, corner_radius=0, width=80)
+        self.entry5_option.set("5")
+        self.entry6_option = ctk.CTkOptionMenu(self.root, font=('Roboto', 12), values=options, corner_radius=0, width=80)
+        self.entry6_option.set("6")
+        
+        # Place Column Number OptionMenu
+        self.entry1_option.place(x=500, y=125)
+        self.entry2_option.place(x=500, y=175)
+        self.entry3_option.place(x=500, y=225)
+        self.entry4_option.place(x=500, y=275)
+        self.entry5_option.place(x=500, y=325)
+        self.entry6_option.place(x=500, y=375)
+
+        # Set file path label and entry box
+        self.file_path_label = ctk.CTkLabel(self.root, text="File Path:", font=('Roboto', 12), height=30, width=50, anchor='e')
+        self.file_path_entry = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=350)
+
+        self.file_path_label.place(x=60, y=500)
+        self.file_path_entry.place(x=130, y=500)
+
+        # Set Buttons
+        self.encode_btn = ctk.CTkButton(self.root, text="Encode", font=('Roboto', 10), corner_radius=0, command=self.confirm_encode)
+        self.edit_btn = ctk.CTkButton(self.root, text="Edit", font=('Roboto', 10), corner_radius=0, width=60, command=self.replace_with_entry_boxes)
+        self.save_btn = ctk.CTkButton(self.root, text="Save", font=('Roboto', 10), corner_radius=0, width=60, command=self.save_column_names)
+        self.select_file_btn = ctk.CTkButton(self.root, text="Select File", font=('Roboto', 10), corner_radius=0, width=80, command=self.select_file)
+
+        # Place Buttons
+        self.encode_btn.place(x=270, y=430)
+        self.edit_btn.place(x=450, y=25)
+        self.save_btn.place(x=520, y=25)
+        self.select_file_btn.place(x=500, y=500)
+
+        self.file_path_entry.insert(0, self.file_path)
+
+        self.root.mainloop()
+
+    def select_file(self):
+        file_path = filedialog.askopenfilename(title="Select a File", filetypes=[("Excel files", "*.xlsx")])
+
+        if file_path:
+            self.file_path_entry.delete(0, ctk.END)
+            self.file_path_entry.insert(0, file_path)
+
+    def column_labels(self, text1, text2, text3, text4):
+        # Column Labels
+        self.label1_label = ctk.CTkLabel(self.root, text=text1, font=('Roboto', 12), height=40, anchor='e', width=100)
+        self.label2_label = ctk.CTkLabel(self.root, text=text2, font=('Roboto', 12), height=40, anchor='e', width=100)
+        self.label3_label = ctk.CTkLabel(self.root, text=text3, font=('Roboto', 12), height=40, anchor='e', width=100)
+        self.label4_label = ctk.CTkLabel(self.root, text=text4, font=('Roboto', 12), height=40, anchor='e', width=100)
+        self.label5_label = ctk.CTkLabel(self.root, text="Scheduled Date:", font=('Roboto', 12), height=40, anchor='e', width=100)
+        self.label6_label = ctk.CTkLabel(self.root, text="Scheduled Time:", font=('Roboto', 12), height=40, anchor='e', width=100)
+        
+        # Place Column Labels
+        self.label1_label.place(x=100, y=120)
+        self.label2_label.place(x=100, y=170)
+        self.label3_label.place(x=100, y=220)
+        self.label4_label.place(x=100, y=270)
+        self.label5_label.place(x=100, y=320)
+        self.label6_label.place(x=100, y=370)
+
+    def replace_with_entry_boxes(self):
+        # Destroy existing labels
+        self.label1_label.destroy()
+        self.label2_label.destroy()
+        self.label3_label.destroy()
+        self.label4_label.destroy()
+
+        # Create entry boxes
+        self.entry1 = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=150)
+        self.entry2 = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=150)
+        self.entry3 = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=150)
+        self.entry4 = ctk.CTkEntry(self.root, font=('Roboto', 12), height=30, width=150)
+
+        self.entry1.place(x=50, y=125)
+        self.entry2.place(x=50, y=175)
+        self.entry3.place(x=50, y=225)
+        self.entry4.place(x=50, y=275)
+
+    def save_column_names(self):
+        try:
+            # Get values of new column names
+            value1 = self.entry1.get()
+            value2 = self.entry2.get()
+            value3 = self.entry3.get()
+            value4 = self.entry4.get()
+
+            # Destroy entry boxes
+            self.entry1.destroy()
+            self.entry2.destroy()
+            self.entry3.destroy()
+            self.entry4.destroy()
+
+            # Set the new values in UI
+            self.column_labels(value1, value2, value3, value4)
+
+            global_settings.update_text1(value1)
+            global_settings.update_text2(value2)
+            global_settings.update_text3(value3)
+            global_settings.update_text4(value4)
+
+            # Update data file
+            # Read and decrypt the data file
+            with open('data.txt', 'rb') as file:
+                encrypted_data = file.read()
+            decrypted_data = decrypt_credentials(encrypted_data)
+            data = json.loads(decrypted_data)
+
+            # Modify the values
+            data['text1'] = value1
+            data['text2'] = value2
+            data['text3'] = value3
+            data['text4'] = value4
+
+            # Encrypt data
+            encrypted_data = encrypt_credentials(data)
+
+            # Write the modified data back to the file
+            with open('data.txt', 'wb') as file:
+                file.write(encrypted_data)
+        except Exception as e:
+            pass
+
+        # Get file path value
+        file_path = self.file_path_entry.get()
+
+        # Set global_settings
+        global_settings.update_file_path(file_path)
+
+        # Update data file
+        # Read and decrypt the data file
+        with open('data.txt', 'rb') as file:
+            encrypted_data = file.read()
+        decrypted_data = decrypt_credentials(encrypted_data)
+        data = json.loads(decrypted_data)
+
+        # Modify the values
+        data['file_path'] = file_path
+
+        # Encrypt data
+        encrypted_data = encrypt_credentials(data)
+
+        # Write the modified data back to the file
+        with open('data.txt', 'wb') as file:
+            file.write(encrypted_data)
+
+        messagebox.showinfo("Success", "Saved.")
+
+    def confirm_encode(self):
+        confirmation = messagebox.askyesno("Confirm", "Proceed?")
+
+        if confirmation:
+            self.encode_to_excel()
+        else:
+            pass
+
+    def encode_to_excel(self):
+        # Get User Inputs
+        entry1_value = str(self.entry1_entry.get())
+        entry2_value = str(self.entry2_entry.get())
+        entry3_value = str(self.entry3_entry.get())
+        entry4_value = str(self.entry4_entry.get())
+        entry5_value = str(self.entry5_entry.get())
+        entry6_value = str(self.entry6_entry.get())
+
+        # Get Column Assignments
+        entry1_column = int(self.entry1_option.get())
+        entry2_column = int(self.entry2_option.get())
+        entry3_column = int(self.entry3_option.get())
+        entry4_column = int(self.entry4_option.get())
+        entry5_column = int(self.entry5_option.get())
+        entry6_column = int(self.entry6_option.get())
+
+        # Check if any entry boxes are blank
+        if entry5_value == "" or entry6_value == "":
+            messagebox.showerror("Error", "Please make sure that Scheduled Date and Scheduled Time are not blank.")
+            return
+        
+        # Check if any value are the same. No two variables should be the same.
+        assigned_columns = set()
+        all_columns = [entry1_column, entry2_column, entry3_column, entry4_column, entry5_column, entry6_column]
+        for column in all_columns:
+            if column in assigned_columns:
+                messagebox.showerror("Error", "Please make sure that no two column assignments are the same.")
+                return
+            assigned_columns.add(column)
+
+        # Check if entry5 is in the correct date format Ex. 29-Jan-2024
+        try:
+            datetime.strptime(entry5_value, "%d-%b-%Y")
+        except ValueError:
+            messagebox.showerror("Error", "Scheduled Date should be in the format 'day-month-year', e.g. '29-Jan-2030'.")
+            return
+        
+        # Check if entry6 is in the correct time format Ex. 8:00 AM or 10:00 PM
+        if not re.match(r'^\d{1,2}:\d{2} [AP]M$', entry6_value):
+            messagebox.showerror("Error", "Scheduled Time should be in the format 'hour:minute AM/PM', e.g., '8:00 AM' or '10:00 PM'.")
+            return
+        
+        # Convert values from string to date object
+        scheduled_date = datetime.strptime(entry5_value, "%d-%b-%Y").date()
+        
+        # Convert values from string to time object
+        scheduled_time = datetime.strptime(entry6_value, "%I:%M %p").time()
+
+        # Load excel workbook
+        workbook = openpyxl.load_workbook(self.file_path)
+        sheet = workbook.worksheets[0]
+
+        # Find the next vacant row
+        next_row = sheet.max_row + 1
+
+        data = [entry1_value, entry2_value, entry3_value, entry4_value, scheduled_date, scheduled_time]
+        column_numbers = [entry1_column, entry2_column, entry3_column, entry4_column, entry5_column, entry6_column]
+
+        for col, value in zip(column_numbers, data):
+            sheet.cell(row=next_row, column=col, value=value)
+
+        # Save the workbook
+        workbook.save(self.file_path)
+
+        messagebox.showinfo("Success!", "Done!")
+
+
+if __name__ == "__main__":
+    main()
