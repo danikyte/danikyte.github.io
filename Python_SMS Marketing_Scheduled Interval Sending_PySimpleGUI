@@ -15,7 +15,7 @@ layout = [
 
 window = sg.Window('Scheduled SMS', layout)
 
-window.SetIcon("bark.ico")
+window.SetIcon("image.ico")
 
 apikey = '[insert_your_api_here]'
 sendername = '[insert_sender_name_here]'
