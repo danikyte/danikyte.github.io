@@ -1,3 +1,5 @@
+# Code is part of desktop application for www.barkdigitalmarketing.com
+
 # Track open windows
 open_windows = []
 
