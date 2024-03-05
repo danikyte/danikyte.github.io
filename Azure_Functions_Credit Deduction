@@ -1,0 +1,53 @@
+# Use this service to deduct credits in the database and return the current credits after deduction
+
+import azure.functions as func
+import logging
+import pyodbc
+import json
+
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+@app.route(route="credit_deduction")
+def credit_deduction(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    req_data = req.get_json()
+
+    account_id = req_data['account_id']
+
+    # Connection String variables
+    server = '[placeholder]'
+    database = '[placeholder]'
+    username_sql = '[placeholder]'
+    password_sql = '[placeholder]'
+    driver = '{ODBC Driver 18 for SQL Server}'
+        
+    # Create the connection string
+    connection_string = f"Driver={driver};Server={server};Database={database};Uid={username_sql};Pwd={password_sql};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30"
+
+    # Establish the database connection
+    try:
+        connection = pyodbc.connect(connection_string)
+        cursor = connection.cursor()
+
+        # Execute an SQL query to the stored procedure for deducting credits
+        query1 = "EXEC DeductCredits ?"
+        cursor.execute(query1, account_id)
+
+        # Get the new credit balance
+        query2 = "SELECT free_credits FROM [placeholder] WHERE account_id = ?"
+        cursor.execute(query2, account_id)
+
+        row = cursor.fetchone()
+
+        user_data = {
+            'free_credits':row[0]
+        }
+
+        # Return user_data as JSON response
+        return func.HttpResponse(json.dumps(user_data), mimetype='application/json', status_code=200)
+    except Exception as e:
+        logging.info(f"{e}")
+        return func.HttpResponse(f"Error Message: {e}", status_code=500)
+    finally:
+        connection.close()
