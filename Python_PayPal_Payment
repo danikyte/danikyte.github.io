@@ -1,4 +1,5 @@
 # Use this to process payment through PayPal
+# Code is part of desktop application for www.barkdigitalmarketing.com
 
 def on_close(self):
         self.keep_waiting = False
