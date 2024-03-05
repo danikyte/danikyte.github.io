@@ -1,0 +1,107 @@
+# Use this to send bulk emails by creating your email in Gmail, save it on your drafts folder, then have the code pick it up and programmatically send
+# message_processing is used to replace placeholders to personalize the email content
+# The functions are part of a class
+
+def message_processing(self, clone_raw_email, var1, var2, var3, var4):
+    message = clone_raw_email.replace(b"{var1}", str(var1).encode())
+    message = message.replace(b"{var2}", str(var2).encode())
+    message = message.replace(b"{var3}", str(var3).encode())
+    message = message.replace(b"{var4}", str(var4).encode())
+
+    return message
+
+def send_email(self):
+    try:
+        # Get the email addresses to iterate
+        workbook = load_workbook(excel_file_path)
+        sheet = workbook.worksheets[0]
+
+        total_rows = sheet.max_row - 1
+
+        # Set up IMAP settings for Gmail
+        imap_host = "imap.gmail.com"
+        imap_port = 993
+
+        # Connect to the Gmail IMAP server
+        mail = IMAP4_SSL(imap_host, imap_port)
+        mail.login(self.sender, self.app_password)
+
+        # Select Drafts folder
+        mail.select("[Gmail]/Drafts")
+
+        # Search for all draft emails
+        status, messages = mail.search(None, "ALL")
+
+        # Create a list of for the draft emails
+        messages = messages[0].split()
+
+        # Choose which draft email
+        mail_id = messages[self.draft_position_number]
+
+        # Fetch the draft message using RFC822 to fetch the entire message
+        status, msg_data = mail.fetch(mail_id, "(RFC822)")
+        
+        if status == 'OK':
+            raw_email = msg_data[0][1] # This is the email data to be attached to message
+
+            # Create an SMTP Connection
+            server = SMTP_SSL('smtp.gmail.com', 465)
+            server.login(self.sender, self.app_password)
+
+            messages_counter = 0 # Used to count the number of messages and terminate the loop if max_messages is reached
+            # Iterate through the contact list and create then send the email
+            for index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                # Check if sending status is paused
+                while self.sending_paused:
+                    sleep(1)
+                
+                # Retrieve email of recipient
+                email_address = row[self.email_column_number]
+
+                # Retrieve variable values
+                var1 = row[self.variable1]
+                var2 = row[self.variable2]
+                var3 = row[self.variable3]
+                var4 = row[self.variable4]
+
+                # Create the message to be sent
+                message = MIMEMultipart()
+                message['from'] = f"{self.email_sendername} <{self.sender}>"
+                message['subject'] = self.email_subject
+                message['to'] = email_address
+
+                # Clone email_message to avoid overwriting
+                clone_raw_email = copy.deepcopy(raw_email)
+
+                processed_message = self.message_processing(clone_raw_email, var1, var2, var3, var4)
+
+                # Attach the processed message
+                message.attach(message_from_bytes(processed_message))
+
+                try:
+                    server.send_message(message)
+
+                except SMTPException as e:
+                    self.results_text.insert(ctk.END, f"An unexpected error occured.\n")
+                    self.results_text.see(ctk.END)
+
+                if messages_counter == self.max_messages:
+                    self.results_text.insert(ctk.END, "Maximum number of messages sent. Close this window and open another one.\n")
+                    self.results_text.see(ctk.END)
+                    break
+
+                sleep(self.delay)
+            # Close the SMTP connection
+            server.quit()
+        else:
+            self.results_text.insert(ctk.END, f"An error occurred. Status: {status}\n")
+            self.results_text.see(ctk.END)
+        # Close the IMAP connection
+        mail.close()
+    except Exception as e:
+        messagebox.showerror("Error", f"An error has occurred.")
+    finally:
+        if server:
+            server.quit()
+        if mail:
+            mail.close()
