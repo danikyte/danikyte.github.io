@@ -1,0 +1,139 @@
+# Use this to collect names and usernames from user's following list on instagram
+
+def parse_following(self):
+  self.results_text.insert(ctk.END, "Retrieving parameter values...\n")
+  self.results_text.see(ctk.END)
+
+  # Get Parameter values - stored in database for easy rectification
+  azure_function_url = "[placeholder]"
+
+  max_attempts = 3
+  for attempt in range(1, max_attempts + 1):
+      response = get(azure_function_url)
+
+      if response.status_code == 200:
+          parameters = response.json()
+          break
+      else:
+          if attempt < max_attempts:
+              continue
+          else:
+              messagebox.showerror("Error", "An unexpected error occurred while getting parameter values. Please try again.")
+              return
+  
+  # Go to user's instagram profile
+  url = f"https://www.instagram.com/{self.username}/following/"
+  self.driver.get(url)
+
+  # Set variable string class="_aano"
+  following_class_variable_path = parameters['following_class_variable_path']
+
+  # Wait until presence of class="_aano" is located
+  wait = WebDriverWait(self.driver, 10)
+  wait.until(EC.presence_of_element_located((By.XPATH, following_class_variable_path)))
+  sleep(3)
+
+  # Set location of following's box/element
+  following_box = self.driver.find_element(By.XPATH, following_class_variable_path)
+
+  # Set name_elements_path
+  following_name_elements_path = parameters['following_name_elements_path']
+
+  while True:
+      try:
+
+          # Check if sending status is paused
+          while self.sending_paused:
+              sleep(1)
+
+          # Check if scrolling is stopped
+          if self.stop_scrolling:
+              break
+
+          self.results_text.insert(ctk.END, "Scrolling down..\n")
+          self.results_text.see(ctk.END)
+
+          # Scroll down to the bottom of the followers list using JavaScript
+          self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", following_box)
+
+          # Wait for new following to load
+          sleep(self.scroll_delay)
+
+          # Check if maximum usernames are present
+          name_elements = following_box.find_elements(By.XPATH, following_name_elements_path)
+
+          names = []
+          for name in name_elements:
+              text = name.text
+              names.append(text)
+
+          name_count = len(names)
+          self.results_text.insert(ctk.END, f"Current count of visible names: {name_count}\n")
+          self.results_text.see(ctk.END)
+
+          if name_count >= self.max_username:
+              # Target max username reached
+              names = None    # Reset names list to free up memory
+              break
+
+          names = None    # Reset names list to free up memory
+      except Exception as e:
+          messagebox.showerror("Error", "An error has occurred during scrolling.")
+          return
+      
+  # Collect A Tags from _aano class
+  self.results_text.insert(ctk.END, "Collecting A Tags..\n")
+  self.results_text.see(ctk.END)
+  all_a_tags = following_box.find_elements(By.TAG_NAME, "a")
+
+  self.results_text.insert(ctk.END, "Extracting Usernames..\n")
+  self.results_text.see(ctk.END)
+  # Get the href from the a_tags
+  usernames = []
+  for a in all_a_tags:
+      href = a.get_attribute("href")
+      username = href.split("/")[3]
+      usernames.append(username)
+
+  unique_usernames = []
+  seen = set()
+  for username in usernames:
+      if username not in seen:
+          unique_usernames.append(username)
+          seen.add(username)
+
+  usernames = unique_usernames
+
+  # Collect Names from _aano class
+  self.results_text.insert(ctk.END, "Extracting Names..\n")
+
+  name_elements = following_box.find_elements(By.XPATH, following_name_elements_path)
+
+  names = []
+  for name in name_elements:
+      text = name.text
+      names.append(text)
+  
+  self.results_text.insert(ctk.END, "Creating Text File Document..\n")
+  self.results_text.see(ctk.END)
+
+  # Combine name and username
+  data = []
+  for name, username in zip(names, usernames):
+      info = f"{name},{username}"
+      data.append(info)
+
+  # Check if followers_{file_count}.txt already exists
+  file_count = 1
+  filename = f"following_{file_count}.txt"
+  while path.exists(filename):
+      file_count += 1
+      filename = f"following_{file_count}.txt"
+
+  # Create a .txt file to store the usernames
+  with open(filename, "w", encoding="utf-8") as file:
+      for info in data:
+          file.write(f"{info}\n")
+  
+  self.results_text.insert(ctk.END, f"Success! Usernames are stored in a newly created Text file named: {filename}. Please go to the folder of Bark.\n")
+  self.results_text.see(ctk.END)
