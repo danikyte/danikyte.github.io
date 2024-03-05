@@ -1,0 +1,45 @@
+# Use this service to insert data to SQL database
+
+import azure.functions as func
+import logging
+import pyodbc
+
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+@app.route(route="log_messages")
+def log_messages(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    req_data = req.get_json()
+
+    account_id = req_data['account_id']
+    receiver = req_data['receiver']
+    message = req_data['message']
+    service = req_data['service']
+
+    # Connection String variables
+    server = '[placeholder]'
+    database = '[placeholder]'
+    username_sql = '[placeholder]'
+    password_sql = '[placeholder]'
+    driver = '{ODBC Driver 18 for SQL Server}'
+        
+    # Create the connection string
+    connection_string = f"Driver={driver};Server={server};Database={database};Uid={username_sql};Pwd={password_sql};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30"
+
+    try:
+        # Establish database connection
+        connection = pyodbc.connect(connection_string)
+        cursor = connection.cursor()
+
+        # Execute an SQL query to retrieve user data
+        query = "INSERT INTO [placeholder] (message_time, account_id, receiver, message_sent, service_type) VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?)"
+        cursor.execute(query, account_id, receiver, message, service)
+
+        # Commit the transaction
+        connection.commit()
+
+        return func.HttpResponse(status_code=200)
+    except Exception as e:
+        logging.info(f"{e}")
+        return func.HttpResponse(f"{e}", status_code=500)
