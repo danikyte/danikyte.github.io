@@ -1,0 +1,870 @@
+import customtkinter as ctk
+from tkinter import messagebox, filedialog
+import os
+from threading import Thread
+from datetime import datetime
+from urllib.parse import urlencode
+import requests
+import openpyxl
+import schedule
+import time
+import portalocker
+import json
+from cryptography.fernet import Fernet
+import re
+
+
+ctk.set_appearance_mode("Dark")
+
+class GlobalSettings():
+    def __init__(self):
+        self.apikey = None
+        self.sendername = None
+        self.booking_message = None
+        self.reminder_message = None
+        self.file_path = None
+
+    def update_apikey(self, new_value):
+        self.apikey = new_value
+
+    def update_sendername(self, new_value):
+        self.sendername = new_value
+
+    def update_booking_message(self, new_value):
+        self.booking_message = new_value
+
+    def update_reminder_message(self, new_value):
+        self.reminder_message = new_value
+
+    def update_file_path(self, new_value):
+        self.file_path = new_value
+
+# Create an instance of global settings
+global_settings = GlobalSettings()
+
+# Set up encryption key
+key = b'xsbu0tu3GlkoqMsN9bzlz_Yq1WzQRaQgNQNZKUh4gKk='
+cipher_suite = Fernet(key)
+
+LOCK_FILE_PATH = "defr.lock"
+
+def acquire_lock():
+    try:
+        lock_file = open(LOCK_FILE_PATH, 'w')
+        portalocker.lock(lock_file, portalocker.LOCK_EX | portalocker.LOCK_NB)
+        return lock_file
+    except Exception as e:
+        messagebox.showerror("Error", f"File already running.")
+        exit(1)
+
+def release_lock(lock_file):
+    portalocker.unlock(lock_file)
+    lock_file.close()
+    os.remove(LOCK_FILE_PATH)
+
+# Track open windows
+open_windows = []
+
+# Function for adding open windows in the open windows list
+def add_open_window(window):
+    open_windows.append(window)
+
+# Function for removing closed windows in the open windows list
+def remove_open_window(window):
+    open_windows.remove(window)
+
+def encrypt_credentials(data):
+    # Convert the data to JSON string
+    data_json = json.dumps(data)
+    # Encrypt the data_json
+    encrypted_data_json = cipher_suite.encrypt(data_json.encode())
+    return encrypted_data_json
+
+def decrypt_credentials(encrypted_data):
+    decrypted_data = cipher_suite.decrypt(encrypted_data)
+    return decrypted_data.decode()
+
+def get_global_settings():
+    try:
+        with open('data.txt', 'rb') as file:
+            encrypted_data = file.read()
+        decrypted_data = decrypt_credentials(encrypted_data)
+        data = json.loads(decrypted_data)
+    except FileNotFoundError:
+        # If file is not found, then create a default txt file
+        data = {
+            'apikey':'None',
+            'sendername':'None',
+            'file_path':'None',
+            'booking_message':'None',
+            'reminder_message':'None'
+        }
+
+        # Encrypt data
+        encrypted_data = encrypt_credentials(data)
+
+        with open('data.txt', 'wb') as file:
+            file.write(encrypted_data)
+
+    global_settings.update_apikey(data['apikey'])
+    global_settings.update_sendername(data['sendername'])
+    global_settings.update_file_path(data['file_path'])
+    global_settings.update_booking_message(data['booking_message'])
+    global_settings.update_reminder_message(data['reminder_message'])
+
+def main():
+    # Acquire the lock
+    lock_file = acquire_lock()
+
+    # Get the data and assign to global settings
+    get_global_settings()
+
+    root = ctk.CTk()
+    ServicesGUI(root)
+    root.mainloop()
+
+    # Release the lock when the application is closed
+    release_lock(lock_file)
+
+
+class ServicesGUI():
+    def __init__(self, root):
+        self.root = root
+
+        # Set Window Title
+        self.root.title("SMS Booking Application")
+
+        # Set Geometry
+        self.root.geometry("800x500")
+
+        # Set Window Icon
+        folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+        ico_path = os.path.join(folder_path, 'barkicon.ico')
+        self.root.iconbitmap(ico_path)
+
+        # Set Window resizability to False
+        self.root.resizable(False, False)
+
+        # Create a Frame for the sidebar
+        self.sidebar_frame = ctk.CTkFrame(self.root, width=250, corner_radius=20)
+        self.sidebar_frame.pack(side="left", fill="y")
+
+        # Create a Frame to display the selected Service UI
+        self.service_frame = ctk.CTkFrame(self.root, corner_radius=20)
+        self.service_frame.pack(side="left", fill="both", expand=True)
+
+
+        # Set current service gui being shown in right frame to keep track of displayed UI
+        self.current_service_gui = BookingSMSGUI(self.service_frame)
+
+        self.service_buttons = []
+        # Create buttons for service selection in the sidebar
+        booking_btn = ctk.CTkButton(self.sidebar_frame, text="Booking", font=('Roboto', 12), corner_radius=20, height=30, command=self.show_booking)
+        booking_btn.pack(pady=10)
+        self.service_buttons.append(booking_btn)
+
+        settings_btn = ctk.CTkButton(self.sidebar_frame, text="Settings", font=('Roboto', 12), corner_radius=20, height=30, command=self.show_settings)
+        settings_btn.pack(pady=0)
+        self.service_buttons.append(settings_btn)
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.root.mainloop()
+
+    def show_booking(self):
+        self.show_service('Booking')
+
+    def show_settings(self):
+        self.show_service('Settings')
+
+    def show_service(self, service):
+        # Destroy the current service GUI if exists
+        if self.current_service_gui:
+            self.current_service_gui.destroy()
+
+        # Dynamically load the UI for the selected product
+        if service == "Booking":
+            self.current_service_gui = BookingSMSGUI(self.service_frame)
+        elif service == "Settings":
+            self.current_service_gui = SettingsGUI(self.service_frame)
+
+        # Pack the service UI Frame
+        self.current_service_gui.pack(fill="both", expand=True)
+
+    def on_closing(self):
+        confirmation = messagebox.askyesno("Confirm", "Exit program?")
+
+        if confirmation:
+            # Close all open windows
+            for window in open_windows[:]:
+                window.destroy()
+
+            # Clear the list of open windows
+            open_windows.clear()
+
+            self.root.destroy()
+        else:
+            pass
+
+class BookingSMSGUI(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.apikey = global_settings.apikey
+        self.sendername = global_settings.sendername
+        self.booking_message = global_settings.booking_message
+        self.reminder_message = global_settings.reminder_message
+        self.file_path = global_settings.file_path
+
+        # Welcome Section
+        self.welcome_label = ctk.CTkLabel(self, 
+                                          text="SMS Booking & Reminder System",
+                                          font=('Roboto', 16, 'bold'),
+                                          height=40,
+                                          width=200)
+        self.welcome_label.place(x=30, y=20)
+
+        self.column_number_label = ctk.CTkLabel(self,
+                                                text="Column Number:",
+                                                font=('Roboto', 12),
+                                                height=40,
+                                                width=100
+                                                )
+        self.column_number_label.place(x=520, y=60)
+
+        # Column Labels
+        self.name_label = ctk.CTkLabel(self,
+                                       text="Name:",
+                                       font=('Roboto', 12),
+                                       height=40,
+                                       width=100)
+        self.phone_number_label = ctk.CTkLabel(self,
+                                               text="Phone Number:",
+                                               font=('Roboto', 12),
+                                               height=40,
+                                               width=100)
+        self.booking_date_label = ctk.CTkLabel(self,
+                                               text="Booking Date:",
+                                               font=('Roboto', 12),
+                                               height=40,
+                                               width=100)
+        self.booking_time_label = ctk.CTkLabel(self,
+                                               text="Booking Time:",
+                                               font=('Roboto', 12),
+                                               height=40,
+                                               width=100)
+        self.reminder_date_label = ctk.CTkLabel(self,
+                                                text="Reminder Date:",
+                                                font=('Roboto', 12),
+                                                height=40,
+                                                width=100)
+        self.reminder_time_label = ctk.CTkLabel(self,
+                                                text="Reminder Time:",
+                                                font=('Roboto', 12),
+                                                height=40,
+                                                width=100)
+        
+        # Place Column Labels
+        self.name_label.place(x=70, y=100)
+        self.phone_number_label.place(x=48, y=150)
+        self.booking_date_label.place(x=50, y=200)
+        self.booking_time_label.place(x=50, y=250)
+        self.reminder_date_label.place(x=48, y=300)
+        self.reminder_time_label.place(x=48, y=350)
+
+        # Column Entry Boxes
+        self.name_entry = ctk.CTkEntry(self, 
+                                       font=('Roboto', 12),
+                                       height=30,
+                                       width=250)
+        self.phone_number_entry = ctk.CTkEntry(self, 
+                                       font=('Roboto', 12),
+                                       height=30,
+                                       width=250,
+                                       placeholder_text="Ex. 09123456789")
+        self.booking_date_entry = ctk.CTkEntry(self, 
+                                       font=('Roboto', 12),
+                                       height=30,
+                                       width=250,
+                                       placeholder_text="Ex. 01-Jan-2024")
+        self.booking_time_entry = ctk.CTkEntry(self, 
+                                       font=('Roboto', 12),
+                                       height=30,
+                                       width=250,
+                                       placeholder_text="Ex. 08:00 AM")
+        self.reminder_date_entry = ctk.CTkEntry(self, 
+                                       font=('Roboto', 12),
+                                       height=30,
+                                       width=250,
+                                       placeholder_text="Ex. 01-Jan-2024")
+        self.reminder_time_entry = ctk.CTkEntry(self, 
+                                       font=('Roboto', 12),
+                                       height=30,
+                                       width=250,
+                                       placeholder_text="Ex. 08:00 AM")
+
+        # Place Column Entry Boxes
+        self.name_entry.place(x=180, y=105)
+        self.phone_number_entry.place(x=180, y=155)
+        self.booking_date_entry.place(x=180, y=205)
+        self.booking_time_entry.place(x=180, y=255)
+        self.reminder_date_entry.place(x=180, y=305)
+        self.reminder_time_entry.place(x=180, y=355)
+
+        # Variable Labels
+        self.name_var_label = ctk.CTkLabel(self, text="{name}", font=('Roboto', 12), height=40, width=50)
+        self.date_var_label = ctk.CTkLabel(self, text="{date}", font=('Roboto', 12), height=40, width=50)
+        self.time_var_label = ctk.CTkLabel(self, text="{time}", font=('Roboto', 12), height=40, width=50)
+
+        # Place Variable Labels
+        self.name_var_label.place(x=440, y=100)
+        self.date_var_label.place(x=440, y=200)
+        self.time_var_label.place(x=440, y=250)
+
+        # Column Number OptionMenu
+        options = ["1", "2", "3", "4", "5", "6"]
+        self.name_column_option = ctk.CTkOptionMenu(self,
+                                                    font=('Roboto', 12),
+                                                    values=options,
+                                                    corner_radius=0,
+                                                    width=80)
+        self.name_column_option.set("1")
+        self.phone_number_column_option = ctk.CTkOptionMenu(self,
+                                                    font=('Roboto', 12),
+                                                    values=options,
+                                                    corner_radius=0,
+                                                    width=80)
+        self.phone_number_column_option.set("2")
+        self.booking_date_column_option = ctk.CTkOptionMenu(self,
+                                                    font=('Roboto', 12),
+                                                    values=options,
+                                                    corner_radius=0,
+                                                    width=80)
+        self.booking_date_column_option.set("3")
+        self.booking_time_column_option = ctk.CTkOptionMenu(self,
+                                                    font=('Roboto', 12),
+                                                    values=options,
+                                                    corner_radius=0,
+                                                    width=80)
+        self.booking_time_column_option.set("4")
+        self.reminder_date_column_option = ctk.CTkOptionMenu(self,
+                                                    font=('Roboto', 12),
+                                                    values=options,
+                                                    corner_radius=0,
+                                                    width=80)
+        self.reminder_date_column_option.set("5")
+        self.reminder_time_column_option = ctk.CTkOptionMenu(self,
+                                                    font=('Roboto', 12),
+                                                    values=options,
+                                                    corner_radius=0, 
+                                                    width=80)
+        self.reminder_time_column_option.set("6")
+        
+        # Place Column Number OptionMenu
+        self.name_column_option.place(x=530, y=105)
+        self.phone_number_column_option.place(x=530, y=155)
+        self.booking_date_column_option.place(x=530, y=205)
+        self.booking_time_column_option.place(x=530, y=255)
+        self.reminder_date_column_option.place(x=530, y=305)
+        self.reminder_time_column_option.place(x=530, y=355)
+
+        # Results box
+        self.results_text = ctk.CTkTextbox(self, height=30, width=350, font=('Roboto', 12))
+        self.results_text.place(x=140, y=460)
+
+        # Set Buttons
+        self.book_btn = ctk.CTkButton(self, text="Book!", font=('Roboto', 10), corner_radius=0, command=self.confirm_send)
+        self.run_autoplay_btn = ctk.CTkButton(self, text="Run Autoplay", font=('Roboto', 10), width=100, corner_radius=0, command=self.confirm_autoplay)
+        self.check_balance_btn = ctk.CTkButton(self, text="Check Balance", font=('Roboto', 10), width=100, corner_radius=0, command=self.check_balance)
+
+        # Place Buttons
+        self.book_btn.place(x=220, y=410)
+        self.run_autoplay_btn.place(x=520, y=410)
+        self.check_balance_btn.place(x=30, y=460)
+        
+
+    def confirm_send(self):
+        if self.sendername == "None":
+            messagebox.showerror("Error", "You don't have a sender name yet.")
+            return
+        else:
+            confirmation = messagebox.askyesno("Confirm", "Proceed?")
+
+            if confirmation:
+                # Get User Inputs
+                name = str(self.name_entry.get())
+                phone_number = str(self.phone_number_entry.get())
+                booking_date = str(self.booking_date_entry.get())
+                booking_time = str(self.booking_time_entry.get())
+                reminder_date = str(self.reminder_date_entry.get())
+                reminder_time = str(self.reminder_time_entry.get())
+
+                # Get Column Assignments
+                name_column = int(self.name_column_option.get())
+                phone_number_column = int(self.phone_number_column_option.get())
+                booking_date_column = int(self.booking_date_column_option.get())
+                booking_time_column = int(self.booking_time_column_option.get())
+                reminder_date_column = int(self.reminder_date_column_option.get())
+                reminder_time_column = int(self.reminder_time_column_option.get())
+
+                # Check if any entry boxes are blank
+                if name == "" or phone_number == "" or booking_date == "" or booking_time == "" or reminder_date == "" or reminder_time == "":
+                    messagebox.showerror("Error", "Please make sure that all fields are not blank.")
+                    return
+                
+                # Check if any value are the same. No two variables should be the same.
+                assigned_columns = set()
+                all_columns = [name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column]
+                for column in all_columns:
+                    if column in assigned_columns:
+                        messagebox.showerror("Error", "Please make sure that no two column assignments are the same.")
+                        return
+                    assigned_columns.add(column)
+
+                # Check if phone number entry is 11 characters long
+                if len(phone_number) != 11:
+                    messagebox.showerror("Error", "Please follow the correct format for the phone number.")
+                    return
+                
+                # Check if reminder date is in the correct date format Ex. 29-Jan-2024
+                try:
+                    datetime.strptime(reminder_date, "%d-%b-%Y")
+                except ValueError:
+                    messagebox.showerror("Error", "Scheduled Date should be in the format 'day-month-year', e.g. '29-Jan-2030'.")
+                    return
+                
+                # Check if entry6 is in the correct time format Ex. 8:00 AM or 10:00 PM
+                if not re.match(r'^\d{1,2}:\d{2} [AP]M$', reminder_time):
+                    messagebox.showerror("Error", "Scheduled Time should be in the format 'hour:minute AM/PM', e.g., '8:00 AM' or '10:00 PM'.")
+                    return
+                
+                self.thread_send_sms(name, phone_number, booking_date, booking_time)
+                self.thread_encode_to_excel(name, phone_number, booking_date, booking_time, reminder_date, reminder_time,
+                                            name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column)
+            else:
+                pass
+                       
+    def thread_send_sms(self, name, phone_number, booking_date, booking_time):
+        Thread(target=self.send_sms, args=(name, phone_number, booking_date, booking_time)).start()
+
+    def thread_encode_to_excel(self, name, phone_number, booking_date, booking_time, reminder_date, reminder_time,
+                                            name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column):
+        Thread(target=self.encode_to_excel, args=(name, phone_number, booking_date, booking_time, reminder_date, reminder_time,
+                                            name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column)).start()
+
+    def message_processing(self, name, phone_number, booking_date, booking_time):
+        message_template = self.booking_message
+
+        # Replace placeholders in the message template with actual values
+        message = message_template.replace("{name}", str(name))
+        message = message.replace("{date}", str(booking_date))
+        message = message.replace("{time}", str(booking_time))
+
+        return message
+
+    def send_sms(self, name, phone_number, booking_date, booking_time):
+        message = self.message_processing(name, phone_number, booking_date, booking_time)
+
+        params = (
+            ('apikey',self.apikey),
+            ('sendername',self.sendername),
+            ('message',message),
+            ('number',phone_number)
+        )
+
+        path = 'https://api.semaphore.co/api/v4/messages?' + urlencode(params)
+
+        response = requests.post(path)
+
+        current_datetime = datetime.now()
+
+        if response.status_code == 200:
+            self.update_text_log(current_datetime, f"{current_datetime}, Message successfully sent to {name}: {phone_number}.")
+            messagebox.showinfo("Success!", f"Message successfully sent to {name}: {phone_number}.")
+            return
+        else:
+            messagebox.showerror("Error", "Failed to send SMS")
+            return
+    
+    def encode_to_excel(self, name, phone_number, booking_date, booking_time, reminder_date, reminder_time,
+                                            name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column):
+        # Convert values from string to date object
+        booking_date = datetime.strptime(booking_date, "%d-%b-%Y").date()
+        reminder_date = datetime.strptime(reminder_date, "%d-%b-%Y").date()
+        
+        # Convert values from string to time object
+
+        booking_time = datetime.strptime(booking_time, "%I:%M %p").time()
+        reminder_time = datetime.strptime(reminder_time, "%I:%M %p").time()
+        
+        # Load excel workbook
+        workbook = openpyxl.load_workbook(self.file_path)
+        sheet = workbook.worksheets[0]
+
+        # Find the next vacant row
+        next_row = sheet.max_row + 1
+
+        data = [name, phone_number, booking_date, booking_time, reminder_date, reminder_time]
+        column_numbers = [name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column]
+
+        for col, value in zip(column_numbers, data):
+            sheet.cell(row=next_row, column=col, value=value)
+
+        # Save the workbook
+        workbook.save(self.file_path)
+
+    def confirm_autoplay(self):
+        if self.sendername == "None":
+            messagebox.showerror("Error", "You don't have a sender name yet.")
+            return
+        else:
+            confirmation = messagebox.askyesno("Confirm", "Proceed?")
+
+            if confirmation:
+                # Get Column Assignments
+                name_column = int(self.name_column_option.get()) - 1
+                phone_number_column = int(self.phone_number_column_option.get()) - 1
+                booking_date_column = int(self.booking_date_column_option.get()) - 1
+                booking_time_column = int(self.booking_time_column_option.get()) - 1
+                reminder_date_column = int(self.reminder_date_column_option.get()) - 1
+                reminder_time_column = int(self.reminder_time_column_option.get()) - 1
+
+                # Check if any value are the same. No two variables should be the same.
+                assigned_columns = set()
+                all_columns = [name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column]
+                for column in all_columns:
+                    if column in assigned_columns:
+                        messagebox.showerror("Error", "Please make sure that no two column assignments are the same.")
+                        return
+                    assigned_columns.add(column)
+
+                AutoplayLoopGUI(name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column)
+            else:
+                pass
+
+    def check_balance(self):
+        if self.sendername == 'None':
+            messagebox.showerror("Error", "You don't have a sender name yet.")
+            return
+        else:
+            url = "https://api.semaphore.co/api/v4/account"
+
+            params = {
+                'apikey':self.apikey
+            }
+
+            try:
+                response = requests.get(url, params=params)
+
+                current_datetime = datetime.now()
+
+                balance_info = response.json()
+                credit_balance = balance_info.get("credit_balance")
+
+                self.results_text.insert(ctk.END, f"\nCredit Balance: {credit_balance}")
+                self.results_text.see(ctk.END)
+                self.update_text_log(current_datetime, f"Credit Balance: {credit_balance}\n")
+
+            except Exception as e:
+                self.results_text.insert(ctk.END, "\nPlease try again after 30 seconds.")
+                self.results_text.see(ctk.END)
+                self.update_text_log(current_datetime, "Please try again after 30 seconds.\n")
+
+    def update_text_log(self, timestamp, message):
+        log_file_path = "log.txt"
+
+        log_file = open(log_file_path, "a")
+        log_file.write(f"{timestamp}, {message}\n")
+        log_file.close()
+
+class AutoplayLoopGUI():
+    instance_open = False
+
+    def __init__(self, name_column, phone_number_column, booking_date_column, booking_time_column, reminder_date_column, reminder_time_column):
+        if AutoplayLoopGUI.instance_open:
+            return
+        
+        AutoplayLoopGUI.instance_open = True
+
+        self.root = ctk.CTk()
+
+        # Add instance of window to open_window list
+        add_open_window(self.root)
+
+        # Setup global settings variabels
+        self.file_path = global_settings.file_path
+        self.apikey = global_settings.apikey
+        self.sendername = global_settings.sendername
+        self.reminder_message = global_settings.reminder_message
+
+        # Setup user-assigned columns
+        self.name_column = name_column
+        self.phone_number_column = phone_number_column
+        self.booking_date_column = booking_date_column
+        self.booking_time_column = booking_time_column
+        self.reminder_date_column = reminder_date_column
+        self.reminder_time_column = reminder_time_column
+        self.date_sent_column = reminder_time_column + 1
+
+        # Setup Autoplay parameters
+        self.loop_interval = 10
+
+        # Set Window Title
+        self.root.title("Autoplay")
+
+        # Set Geometry
+        self.root.geometry("450x450")
+
+        # Set Window Icon
+        folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+        ico_path = os.path.join(folder_path, 'barkicon.ico')
+        self.root.iconbitmap(ico_path)
+
+        # Set Window resizability to False
+        self.root.resizable(False, False)
+
+        # Set labels and text box
+        self.notice_label = ctk.CTkLabel(self.root, text="Autoplay running. Do not close this window.", font=('Roboto', 12), anchor='w', justify='left', height=30, width=250)
+        self.results_text = ctk.CTkTextbox(self.root, height=380, width=430, font=('Helvetica', 10))
+
+        # Place labels and text box
+        self.notice_label.place(x=20, y=10)
+        self.results_text.place(x=10, y=50)
+
+        self.autoplay_flag = True
+        Thread(target=self.autoplay_loop).start()
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.root.mainloop()
+
+    def autoplay_loop(self):
+        schedule.every(self.loop_interval).minutes.do(self.check_scheduled_sms)
+
+        while self.autoplay_flag:
+            schedule.run_pending()
+            time.sleep(2)
+
+    def on_closing(self):
+        # Set the autoplay_flag to False when the window is closed by the user
+        self.autoplay_flag = False
+        AutoplayLoopGUI.instance_open = False
+        remove_open_window(self.root)
+        self.root.destroy()
+
+    def check_scheduled_sms(self):
+        self.results_text.insert(ctk.END, "Checking for scheduled SMS to send...\nPlease make sure the excel file is closed.\n")
+        # Set up current date and current time
+        current_date = datetime.now().date()
+        current_time = datetime.now().time()
+        
+        try:
+            # Load excel workbook
+            workbook = openpyxl.load_workbook(self.file_path)
+            sheet = workbook.worksheets[0]
+
+            # Iterate through the rows starting from row 2, values only
+            for index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                scheduled_date = row[self.reminder_date_column]
+                scheduled_time = row[self.reminder_time_column]
+                date_sent = row[self.date_sent_column]
+
+                scheduled_date_date = scheduled_date.date()
+
+                if date_sent == None:
+                    if current_date >= scheduled_date_date:
+                        if current_time >= scheduled_time:
+                            receiver = row[self.phone_number_column]
+
+                            params = (
+                                ('apikey',self.apikey),
+                                ('sendername',self.sendername),
+                                ('message',self.reminder_message),
+                                ('number',receiver)
+                            )
+
+                            path = 'https://api.semaphore.co/api/v4/messages?' + urlencode(params)
+                    
+                            response = requests.post(path)
+
+                            current_datetime = datetime.now()
+
+                            if response.status_code == 200:
+                                sheet.cell(row=index, column=self.date_sent_column+1, value=current_datetime)
+                                workbook.save(self.file_path)
+                                self.results_text.insert(ctk.END, f"{current_datetime}, Message sent to: {receiver}.\n")
+                                self.results_text.see(ctk.END)
+                                self.update_text_log(current_datetime, f"{current_datetime}, Message sent to: {receiver}.\n")
+                            else:
+                                self.results_text.insert(ctk.END, f"{current_datetime}, Failed to send message to: {receiver}. Status Code: {response.status_code}\n")
+                                self.update_text_log(current_datetime, f"{current_datetime}, Failed to send message to: {receiver}. Status Code: {response.status_code}\n")
+                            time.sleep(1)
+            self.check_balance()
+        except Exception as e:
+            self.results_text.insert(ctk.END, f"An error occured. Autoplay will keep on running.\n")
+            self.results_text.see(ctk.END)
+            self.update_text_log(current_datetime, f"An error occured. Autoplay will keep on running.\n")
+            pass
+
+    def check_balance(self):
+        url = "https://api.semaphore.co/api/v4/account"
+
+        params = {
+            'apikey':self.apikey
+        }
+
+        try:
+            response = requests.get(url, params=params)
+
+            current_datetime = datetime.now()
+
+            balance_info = response.json()
+            credit_balance = balance_info.get("credit_balance")
+
+            self.results_text.insert(ctk.END, f"Credit Balance: {credit_balance}\n")
+            self.results_text.see(ctk.END)
+            self.update_text_log(current_datetime, f"Credit Balance: {credit_balance}\n")
+
+        except Exception as e:
+            self.results_text.insert(ctk.END, "Can't check balance. Please try again after 30 seconds.\n")
+            self.results_text.see(ctk.END)
+            self.update_text_log(current_datetime, "Can't check balance. Please try again after 30 seconds.\n")
+        
+    def update_text_log(self, timestamp, message):
+        log_file_path = "log.txt"
+
+        log_file = open(log_file_path, "a")
+        log_file.write(f"{timestamp}, {message}\n")
+        log_file.close()
+
+class SettingsGUI(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.apikey = global_settings.apikey
+        self.sendername = global_settings.sendername
+        self.booking_message = global_settings.booking_message
+        self.reminder_message = global_settings.reminder_message
+        self.file_path = global_settings.file_path
+
+        # Welcome Section
+        self.welcome_label = ctk.CTkLabel(self, 
+                                          text="Settings",
+                                          font=('Roboto', 16, 'bold'),
+                                          height=40,
+                                          width=100)
+        self.welcome_label.place(x=30, y=20)
+
+        # Sendername details
+        self.sendername_label = ctk.CTkLabel(self,
+                                             text="Sender Name:",
+                                             font=('Roboto', 12),
+                                             height=30,
+                                             width=50, 
+                                             anchor='w')
+        self.sendername_value_label = ctk.CTkLabel(self,
+                                                   text=f"{self.sendername}",
+                                                   text_color="white",
+                                                   font=('Roboto', 12),
+                                                   height=30,
+                                                   width=150,
+                                                   corner_radius=10,
+                                                   anchor='center',
+                                                   fg_color="#555555")
+        self.sendername_label.place(x=50, y=80)
+        self.sendername_value_label.place(x=150, y=80)
+
+        # File Path details
+        self.file_path_label = ctk.CTkLabel(self,
+                                            text="File Path:",
+                                            font=('Roboto', 12),
+                                            height=30,
+                                            width=50)
+        self.file_path_label.place(x=75, y=120)
+
+        self.file_path_entry = ctk.CTkEntry(self,
+                                            font=('Roboto', 12),
+                                            height=30,
+                                            width=380)
+        self.file_path_entry.place(x=150, y=120)
+
+        self.select_file_btn = ctk.CTkButton(self, 
+                                             text="Select File", 
+                                             font=('Roboto', 10), 
+                                             height=30, 
+                                             width=80, 
+                                             command=self.select_file)
+        self.select_file_btn.place(x=540, y=120)
+
+        # Booking Message details
+        self.booking_label = ctk.CTkLabel(self,
+                                          text="Booking Message:",
+                                          font=('Roboto', 12),
+                                          height=30,
+                                          width=80)
+        self.booking_label.place(x=50, y=170)
+
+        self.booking_text = ctk.CTkTextbox(self, height=270, width=270, font=('Roboto', 12))
+        self.booking_text.place(x=50, y=200)
+
+        # Reminder Message details
+        self.reminder_label = ctk.CTkLabel(self,
+                                           text="Reminder Message:",
+                                           font=('Roboto', 12),
+                                           height=30,
+                                           width=80)
+        self.reminder_label.place(x=350, y=170)
+
+        self.reminder_text = ctk.CTkTextbox(self, height=270, width=270, font=('Roboto', 12))
+        self.reminder_text.place(x=350, y=200)
+
+        # Save settings button
+        self.save_btn = ctk.CTkButton(self, text="Save", font=('Roboto', 10), height=30, width=80, command=self.save_settings)
+        self.save_btn.place(x=540, y=30)
+
+        # Insert values from global settings upon initial start up
+        self.file_path_entry.insert(0, self.file_path)
+        self.booking_text.insert(ctk.END, self.booking_message)
+        self.reminder_text.insert(ctk.END, self.reminder_message)
+        
+    def select_file(self):
+        file_path = filedialog.askopenfilename(title="Select a File", filetypes=[("Excel files", "*.xlsx")])
+
+        if file_path:
+            self.file_path_entry.delete(0, ctk.END)
+            self.file_path_entry.insert(0, file_path)
+
+    def save_settings(self):
+        # Get the values
+        file_path = self.file_path_entry.get()
+        booking_message = self.booking_text.get("1.0", ctk.END).strip()
+        reminder_message = self.reminder_text.get("1.0", ctk.END).strip()
+
+        # Read and decrypt the data file
+        with open('data.txt', 'rb') as file:
+            encrypted_data = file.read()
+        decrypted_data = decrypt_credentials(encrypted_data)
+        data = json.loads(decrypted_data)
+
+        # Modify the values
+        data['file_path'] = file_path
+        data['booking_message'] = booking_message
+        data['reminder_message'] = reminder_message
+
+        # Encrypt data
+        encrypted_data = encrypt_credentials(data)
+
+        # Write the modified data back to the file
+        with open('data.txt', 'wb') as file:
+            file.write(encrypted_data)
+
+        # Change global_settings within the application
+        global_settings.update_file_path(file_path)
+        global_settings.update_booking_message(booking_message)
+        global_settings.update_reminder_message(reminder_message)
+
+        messagebox.showinfo("Success", "Settings Saved.")
+        return
+
+if __name__ == "__main__":
+    main()
