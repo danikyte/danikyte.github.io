@@ -1,0 +1,29 @@
+# Use this to efficiently deduct credits
+# Open Azure Data Studio and open New Query
+# Run the following SQL code
+
+CREATE PROCEDURE DeductCredits
+(
+    @account_id INT
+)
+AS
+BEGIN
+    DECLARE @current_credits INT;
+    DECLARE @deduction INT;
+
+    SET @deduction = 1;
+
+    BEGIN TRANSACTION;
+
+    -- Get current credit balance for the account
+    SELECT @current_credits = free_credits
+    FROM [placeholder]
+    WHERE account_id = @account_id;
+
+    -- Perform UPDATE method
+    UPDATE [placeholder]
+    SET free_credits = free_credits - @deduction
+    WHERE account_id = @account_id;
+
+    COMMIT TRANSACTION
+END
