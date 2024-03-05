@@ -3,6 +3,7 @@
 # Text file is encrypted to prevent unnecessary changes
 # Uses instance of global_settings to store values of variables
 # This is developed to cater to Woofer Autoplay, so that the excel file does not need to be opened
+# Code is part of desktop application for www.barkdigitalmarketing.com
 
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
