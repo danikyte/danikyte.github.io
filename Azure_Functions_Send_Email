@@ -1,0 +1,46 @@
+# Use this service to send email
+
+import azure.functions as func
+import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+@app.route(route="send_email")
+def send_email(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    req_data = req.get_json()
+
+    sender_name = "[placeholder]"
+    sender = "[placeholder]"
+    app_password = "[placeholder]"
+
+    try:
+        send_to = req_data['send_to']
+        email_subject = req_data['email_subject']
+        email_body = req_data['email_body']
+
+        # Create an SSL connection to Gmail SMTP server
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(sender, app_password)
+
+        # Create a message
+        message = MIMEMultipart()
+        message['to'] = send_to
+        message['from'] = f"{sender_name} <{sender}>"
+        message['subject'] = email_subject
+        body = email_body
+        msg = MIMEText(body, 'plain', 'utf-8')
+        message.attach(msg)
+
+        server.sendmail(sender, send_to, message.as_string())
+
+        server.quit()
+
+        return func.HttpResponse(status_code=200)
+    except Exception as e:
+        logging.info(f"{e}")
+        return func.HttpResponse(f"Error Message: {e}", status_code=500)
