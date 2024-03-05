@@ -1,6 +1,6 @@
 function transferToDatabase() {
-  var inputSheet = SpreadsheetApp.openById("1DswC_BpfSwY2lGwP4FCt-cjcbtK4QJfH717gYSRwRDc").getSheetByName("Input");
-  var databaseSheet = SpreadsheetApp.openById("1DswC_BpfSwY2lGwP4FCt-cjcbtK4QJfH717gYSRwRDc").getSheetByName("Database");
+  var inputSheet = SpreadsheetApp.openById("[placeholder]").getSheetByName("Input");
+  var databaseSheet = SpreadsheetApp.openById("[placeholder]").getSheetByName("Database");
   var rowCount;
   var response;
   
