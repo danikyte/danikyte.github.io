@@ -1,4 +1,5 @@
 # Use this service for server-side access_validity verification
+# Code is part of desktop application for www.barkdigitalmarketing.com
 
 import azure.functions as func
 import logging
