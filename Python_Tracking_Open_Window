@@ -1,0 +1,76 @@
+# Track open windows
+open_windows = []
+
+# Function for adding open windows in the open windows list
+def add_open_window(window):
+    open_windows.append(window)
+
+# Function for removing closed windows in the open windows list
+def remove_open_window(window):
+    open_windows.remove(window)
+
+############
+
+# Whenever the user logs out, destroy all open windows using .destroy()
+def logout_account(self):
+        confirmation = messagebox.askyesno("Confirm", "Logout?")
+
+        if confirmation:
+            # Close all open windows
+            for window in open_windows[:]:
+                window.destroy()
+
+            # Clear the list of open windows
+            open_windows.clear()
+
+            # Update database from 'ON' to 'OFF' state for the account_id
+            azure_update_url = "[placeholder]"
+
+            payload = {
+                'column':'status',
+                'column_value':'off',
+                'account_id':self.account_id
+            }
+
+            try:
+                # Make a post request to update database
+                response = post(azure_update_url, json=payload)
+
+                if response.status_code == 200:
+                    # Delete the user.json file
+                    try:
+                        remove('user.txt')
+                        messagebox.showinfo("Success!", "You have logged out successfully.")
+                        self.root.destroy() # Close the window after successfully logging out
+                    except FileNotFoundError:
+                        messagebox.showerror("Error", "User data cannot be found while logging out. Please make sure it is not missing or you might get locked out from your account.")
+                        return
+                else:
+                    messagebox.showerror("Error", "An error has occurred while logging out. Please try again.")
+                    return
+            except Exception as e:
+                messagebox.showerror("Error", "An error has occurred.")
+                return
+        else:
+            pass
+
+############
+
+# Use the add_open_window and remove_open_window as follows:
+
+class New_Window():
+    def __init__(self):
+        self.root = ctk.CTk()
+
+        # Add instance of window to open_windows list
+        add_open_window(self.root)
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        self.root.mainloop()
+
+    def on_close(self):
+        # Remove root in list of open_windows when window is closed
+        remove_open_window(self.root)
+        self.root.destroy()
+
